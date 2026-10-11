@@ -259,16 +259,80 @@
     border: 1.5px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); cursor: pointer;
   }
 
-  /* ---------- Bar akun di hero ---------- */
-  .userbar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 13px; color: var(--hero-soft); }
-  .userbar .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .userbar .who b { color: var(--hero-ink); font-weight: 600; }
-  .userbar .sync { white-space: nowrap; }
-  .userbar .sync.error { color: #ffd2c9; font-weight: 600; }
-  .userbar button {
-    font: inherit; font-size: 13px; font-weight: 600; color: #fff;
-    background: rgba(255,255,255,.18); border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer;
+  /* ---------- Profil (avatar bulat + menu) ---------- */
+  .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .hero-name {
+    flex: 1; min-width: 0; font-size: clamp(26px, 7.4vw, 32px); font-weight: 800;
+    letter-spacing: -0.025em; line-height: 1.1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  .profile { position: relative; }
+  .avatar {
+    position: relative; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer;
+    background: #fff; color: var(--hero); font: inherit; font-size: 18px; font-weight: 800; line-height: 1;
+    box-shadow: 0 0 0 3px rgba(255,255,255,.28);
+  }
+  .avatar:active { transform: scale(.95); }
+  .avatar:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  .avatar.err::after {
+    content: ""; position: absolute; top: -2px; right: -2px; width: 13px; height: 13px;
+    border-radius: 50%; background: #e5484d; border: 2px solid var(--hero);
+  }
+  .pmenu {
+    position: absolute; right: 0; top: calc(100% + 10px); z-index: 15;
+    width: min(280px, calc(100vw - 32px)); padding: 6px;
+    background: #fff; color: var(--ink); border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(19,34,43,.28);
+    /* tertutup: memudar, mengecil, naik sedikit ke arah avatar */
+    transform-origin: top right; opacity: 0; transform: translateY(-14px) scale(.82);
+    filter: blur(6px);
+    visibility: hidden; pointer-events: none;
+    transition: opacity .2s ease, transform .26s cubic-bezier(.5, 0, .75, 0), filter .2s ease, visibility 0s linear .26s;
+  }
+  .pmenu.open {
+    opacity: 1; transform: none; filter: none; visibility: visible; pointer-events: auto;
+    transition: opacity .2s ease, transform .4s cubic-bezier(.2, 1.1, .3, 1), filter .2s ease, visibility 0s;
+  }
+  /* cincin kecil di avatar saat menu menutup */
+  .avatar.pulse::before {
+    content: ""; position: absolute; inset: -3px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.85); pointer-events: none;
+    animation: ring .5s ease-out forwards;
+  }
+  @keyframes ring { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
+  .avatar { transition: transform .25s cubic-bezier(.2, 1.2, .3, 1); }
+  .avatar[aria-expanded="true"] { transform: scale(1.06); }
+  .pmenu.open .pmenu-head, .pmenu.open .pmenu-item { animation: pmIn .3s cubic-bezier(.2, .8, .2, 1) both; }
+  .pmenu.open .pmenu-item:nth-of-type(1) { animation-delay: .04s; }
+  .pmenu.open .pmenu-item:nth-of-type(2) { animation-delay: .08s; }
+  @keyframes pmIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .menu-backdrop {
+    position: fixed; inset: 0; z-index: 14; background: rgba(19,34,43,.28);
+    opacity: 0; pointer-events: none; transition: opacity .28s ease; -webkit-tap-highlight-color: transparent;
+  }
+  @supports (backdrop-filter: blur(2px)) { .menu-backdrop { backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); } }
+  .menu-backdrop.open { opacity: 1; pointer-events: auto; }
+  @media (prefers-reduced-motion: reduce) {
+    .pmenu.open .pmenu-head, .pmenu.open .pmenu-item { animation: none; }
+    .pmenu { filter: none; }
+    .avatar.pulse::before { animation: none; display: none; }
+  }
+  .pmenu-head { padding: 12px 12px 10px; margin-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .pmenu-hello { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .pmenu-name { margin-top: 2px; font-size: 17px; font-weight: 800; overflow-wrap: anywhere; }
+  .pmenu-mail { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .pmenu .sync { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--ok); }
+  .pmenu .sync.error { color: var(--danger); }
+  .pmenu .sync:empty { display: none; }
+  .pmenu-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 0 12px;
+    border: 0; border-radius: 10px; background: none; cursor: pointer; text-align: left;
+    font: inherit; font-size: 15px; font-weight: 600; color: var(--ink);
+  }
+  .pmenu-item:hover, .pmenu-item:focus-visible { background: var(--paper); outline: none; }
+  .pmenu-item.danger { color: var(--danger); }
+  .pmenu-item svg { flex-shrink: 0; }
 
   /* ---------- Pilih tanggal ---------- */
   .datebar { display: flex; gap: 8px; align-items: center; padding: 12px 20px 0; }
@@ -387,8 +451,8 @@
   /* HP posisi landscape (layar pendek) */
   @media (max-height: 480px) and (orientation: landscape) {
     .hero { padding-top: calc(14px + env(safe-area-inset-top)); padding-bottom: 16px; }
-    .userbar { margin-bottom: 10px; }
     .hero-actions { margin-top: 12px; }
+    .hero-top { margin-bottom: 10px; }
     .hint { display: none; }
     .paper { max-height: 30dvh; }
     dialog { padding: 18px; }
@@ -467,11 +531,27 @@
 <div class="wrap">
 
   <header class="hero">
-    <div class="userbar">
-      <span class="who" id="userName"></span>
-      <span class="sync" id="saveStatus"></span>
-      <button id="btnAkun" type="button">Akun</button>
-      <button id="btnKeluar" type="button">Keluar</button>
+    <div class="hero-top">
+      <div class="hero-name" id="heroName"></div>
+      <div class="profile">
+        <button class="avatar" id="btnProfil" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="profilMenu" aria-label="Profil"><span id="avatarLetter">?</span></button>
+        <div class="pmenu" id="profilMenu" role="menu">
+          <div class="pmenu-head">
+            <div class="pmenu-hello">Masuk sebagai</div>
+            <div class="pmenu-name" id="menuName"></div>
+            <div class="pmenu-mail" id="menuMail"></div>
+            <div class="sync" id="saveStatus"></div>
+          </div>
+          <button class="pmenu-item" id="btnAkun" type="button" role="menuitem">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Informasi akun
+          </button>
+          <button class="pmenu-item danger" id="btnKeluar" type="button" role="menuitem">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Keluar
+          </button>
+        </div>
+      </div>
     </div>
     <div class="hero-label">Gaji</div>
     <div class="hero-amount" id="saldo">Rp 0</div>
@@ -511,6 +591,7 @@
   </div>
 </div>
 
+<div class="menu-backdrop" id="menuBackdrop"></div>
 </div><!-- /#app -->
 
 <!-- Dialog informasi akun -->
@@ -615,6 +696,7 @@ import * as fb from './firebase.js';
     const el = document.getElementById('saveStatus');
     el.textContent = { saving: 'Menyimpan…', saved: 'Tersimpan', error: 'Gagal menyimpan' }[s] || '';
     el.className = 'sync' + (s === 'error' ? ' error' : '');
+    document.getElementById('btnProfil').classList.toggle('err', s === 'error');
   }
 
   /* ---------- Util angka ---------- */
@@ -1359,6 +1441,47 @@ import * as fb from './firebase.js';
   input.addEventListener('focus', () => setTimeout(syncKeyboard, 300));
   input.addEventListener('blur', () => { rootEl.style.setProperty('--kb', '0px'); composerEl.classList.remove('kb'); });
 
+  /* ---------- Profil: avatar huruf depan + menu ---------- */
+  const btnProfil = $('btnProfil'), pmenu = $('profilMenu');
+  const firstName = u => ((u && (u.displayName || (u.email ? u.email.split('@')[0] : '')) || '').trim().split(/\s+/)[0]) || '';
+  const initialOf = u => { const f = firstName(u); return f ? Array.from(f)[0].toUpperCase() : '?'; };
+
+  function fillProfile() {
+    if (!currentUser) return;
+    $('avatarLetter').textContent = initialOf(currentUser);
+    $('heroName').textContent = currentUser.displayName || firstName(currentUser) || 'Akun';
+    $('menuName').textContent = currentUser.displayName || firstName(currentUser) || 'Akun';
+    $('menuMail').textContent = currentUser.email || '';
+    btnProfil.setAttribute('aria-label', 'Profil ' + (firstName(currentUser) || ''));
+  }
+  const backdrop = $('menuBackdrop');
+  const menuOpen = () => pmenu.classList.contains('open');
+  function closeMenu() {
+    if (menuOpen()) {
+      btnProfil.classList.remove('pulse'); void btnProfil.offsetWidth; // ulang animasi
+      btnProfil.classList.add('pulse');
+      setTimeout(() => btnProfil.classList.remove('pulse'), 520);
+    }
+    pmenu.classList.remove('open');
+    backdrop.classList.remove('open');
+    btnProfil.setAttribute('aria-expanded', 'false');
+  }
+  function openMenu() {
+    pmenu.classList.add('open');
+    backdrop.classList.add('open');
+    btnProfil.setAttribute('aria-expanded', 'true');
+    $('btnAkun').focus({ preventScroll: true });
+  }
+  btnProfil.addEventListener('click', () => (menuOpen() ? closeMenu() : openMenu()));
+  // Ketuk di mana saja (area kosong, daftar, kolom catat, dll.) menutup menu tanpa memicu tombol di bawahnya
+  backdrop.addEventListener('click', closeMenu);
+  // Geser/scroll di layar juga menutup menu
+  backdrop.addEventListener('touchmove', closeMenu, { passive: true });
+  backdrop.addEventListener('wheel', closeMenu, { passive: true });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuOpen()) { closeMenu(); btnProfil.focus(); } });
+  $('btnAkun').addEventListener('click', closeMenu);
+  $('btnKeluar').addEventListener('click', closeMenu);
+
   /* ---------- Informasi akun ---------- */
   const accMsg = (t, ok) => { const m = $('accMsg'); m.textContent = t || ''; m.className = 'auth-msg' + (ok ? ' ok' : ''); };
   function openAkun() {
@@ -1500,8 +1623,10 @@ import * as fb from './firebase.js';
     if (authMode === 'daftar' && pass.length < 6) return authMsg('Kata sandi minimal 6 karakter.');
     authMsg(''); setBusy(true);
     try {
-      if (authMode === 'daftar') await fb.register(email, pass, nama);
-      else await fb.login(email, pass);
+      if (authMode === 'daftar') {
+        await fb.register(email, pass, nama);
+        if (currentUser && !$('app').hidden) fillProfile(); // nama baru terpasang setelah akun dibuat
+      } else await fb.login(email, pass);
     } catch (err) { authMsg(errMsg(err)); }
     finally { setBusy(false); }
   });
@@ -1532,6 +1657,7 @@ import * as fb from './firebase.js';
 
   /* ---------- Status login → tampilan ---------- */
   function showScreen(which) {
+    closeMenu();
     $('loading').hidden = which !== 'loading';
     $('auth').hidden = which !== 'auth';
     $('app').hidden = which !== 'app';
@@ -1541,10 +1667,7 @@ import * as fb from './firebase.js';
 
   function enterApp() {
     clearTimeout(loadTimer);
-    $('userName').innerHTML = '';
-    const who = document.createElement('b');
-    who.textContent = currentUser.displayName || currentUser.email || 'Akun';
-    $('userName').append('Masuk sebagai ', who);
+    fillProfile();
     setSaveStatus('saved');
     showScreen('app');
     render();
