@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2536c9">
+<title>Catatan Keuangan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #13222b;
+    --muted: #5d7079;
+    --paper: #eef2f4;
+    --card: #ffffff;
+    --line: #d5dde1;
+    --hero: #2536c9;
+    --hero-ink: #ffffff;
+    --hero-soft: rgba(255,255,255,.72);
+    --danger: #c23b22;
+    --ok: #0f7a55;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: 'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding-bottom: calc(150px + env(safe-area-inset-bottom));
+    font-variant-numeric: tabular-nums;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; }
+
+  /* ---------- Gaji (paling atas) ---------- */
+  .hero {
+    background: var(--hero);
+    color: var(--hero-ink);
+    padding: calc(28px + env(safe-area-inset-top)) 24px 28px;
+    border-radius: 0 0 28px 28px;
+  }
+  .hero-label { font-size: 15px; color: var(--hero-soft); font-weight: 600; }
+  .hero-amount {
+    font-size: clamp(44px, 14vw, 68px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-top: 6px;
+    word-break: break-all;
+  }
+  .hero-amount.minus { color: #ffd2c9; }
+  .hero-meta { margin-top: 10px; font-size: 14px; color: var(--hero-soft); line-height: 1.5; }
+  .hero-meta b { color: var(--hero-ink); font-weight: 600; }
+  .hero-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-hero {
+    flex: 1;
+    font: inherit; font-weight: 600; font-size: 15px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(255,255,255,.55);
+    background: transparent; color: var(--hero-ink);
+    cursor: pointer;
+  }
+  .btn-hero.solid { background: #fff; color: var(--hero); border-color: #fff; }
+  .btn-hero:active { transform: scale(.98); }
+
+  /* ---------- Daftar catatan ---------- */
+  .list { padding: 22px 20px 0; }
+  .day { margin-top: 22px; }
+  .day:first-child { margin-top: 0; }
+  .day-head {
+    display: flex; justify-content: space-between;
+    font-size: 14px; color: var(--muted); font-weight: 600;
+    padding: 0 4px 8px;
+  }
+  .rows { background: var(--card); border-radius: 16px; overflow: hidden; }
+  .row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--line);
+  }
+  .row:first-child { border-top: 0; }
+  .row-name { flex: 1; font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+  .row-time { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .row-amount { font-size: 17px; font-weight: 600; color: var(--danger); white-space: nowrap; }
+  .row-del {
+    font: inherit; font-size: 13px; color: var(--muted);
+    background: none; border: 0; padding: 8px 4px 8px 8px; cursor: pointer;
+  }
+  .row-del:hover { color: var(--danger); }
+  .empty {
+    text-align: center; color: var(--muted);
+    padding: 44px 24px; line-height: 1.6; font-size: 16px;
+  }
+  .empty b { color: var(--ink); }
+
+  /* ---------- Input catatan ---------- */
+  .composer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .composer-inner { max-width: 520px; margin: 0 auto; }
+  .composer-row { display: flex; gap: 10px; }
+  .composer input {
+    flex: 1; min-width: 0;
+    font: inherit; font-size: 18px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .composer input:focus, dialog input:focus {
+    outline: 3px solid rgba(37,54,201,.35); outline-offset: 1px; border-color: var(--hero);
+  }
+  .btn-add {
+    font: inherit; font-weight: 800; font-size: 16px;
+    background: var(--hero); color: #fff;
+    border: 0; border-radius: 14px; padding: 0 20px; cursor: pointer;
+  }
+  .btn-add:active { transform: scale(.97); }
+  .hint { margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.45; }
+  .preview { color: var(--ink); font-weight: 600; }
+  .error { color: var(--danger); font-weight: 600; }
+
+  /* ---------- Dialog gaji ---------- */
+  dialog {
+    border: 0; border-radius: 22px; padding: 24px;
+    width: min(92vw, 400px);
+    margin: auto;
+    color: var(--ink);
+  }
+  dialog::backdrop { background: rgba(19,34,43,.5); }
+  dialog h2 { font-size: 22px; font-weight: 800; }
+  dialog p { color: var(--muted); font-size: 14px; margin-top: 6px; line-height: 1.45; }
+  dialog input {
+    width: 100%; margin-top: 16px;
+    font: inherit; font-size: 28px; font-weight: 800;
+    padding: 12px 14px;
+    border: 1.5px solid var(--line); border-radius: 14px;
+    background: var(--paper); color: var(--ink);
+  }
+  .dlg-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .dlg-actions button {
+    flex: 1; font: inherit; font-weight: 600; font-size: 16px;
+    padding: 13px; border-radius: 12px; cursor: pointer;
+    border: 1.5px solid var(--line); background: #fff; color: var(--ink);
+  }
+  .dlg-actions .primary { background: var(--hero); border-color: var(--hero); color: #fff; }
+
+  /* ---------- Rekap bulanan ---------- */
+  .recap-bar { padding: 18px 20px 0; }
+  .btn-recap {
+    width: 100%; font: inherit; font-weight: 600; font-size: 15px;
+    padding: 13px 14px; border-radius: 14px; cursor: pointer;
+    background: var(--card); color: var(--hero);
+    border: 1.5px solid var(--hero);
+  }
+  .btn-recap:active { transform: scale(.99); }
+  dialog select {
+    width: 100%; margin-top: 16px;
+    font: inherit; font-size: 18px; font-weight: 600;
+    padding: 12px 14px;
+    border: 1.5px solid var(--line); border-radius: 14px;
+    background: var(--paper); color: var(--ink);
+  }
+  dialog select:focus { outline: 3px solid rgba(37,54,201,.35); outline-offset: 1px; border-color: var(--hero); }
+
+  #dlgRekap { max-height: 90vh; overflow-y: auto; }
+
+  #dlgRekap { width: min(94vw, 480px); }
+  .seg { display: flex; gap: 4px; background: var(--paper); padding: 4px; border-radius: 12px; margin-top: 12px; }
+  .seg button {
+    flex: 1; font: inherit; font-weight: 600; font-size: 14px;
+    padding: 10px 8px; border: 0; border-radius: 9px;
+    background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .seg button[aria-selected="true"] { background: #fff; color: var(--hero); box-shadow: 0 1px 3px rgba(19,34,43,.18); }
+  .paper {
+    margin-top: 12px; background: #fff; border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 16px; max-height: 46vh; overflow: auto; font-size: 13px; line-height: 1.4;
+  }
+  .pv-title { font-size: 18px; font-weight: 800; }
+  .pv-sub { color: var(--muted); margin-top: 2px; }
+  .pv-box { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .pv-box > :first-child { border-top: 0 !important; }
+  .pv-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border-top: 1px solid var(--line); }
+  .pv-row.bold { font-weight: 800; background: var(--paper); }
+  .pv-h { font-weight: 800; font-size: 15px; margin-top: 18px; }
+  .pv-note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .pv-g { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; padding: 7px 10px; border-top: 1px solid var(--line); }
+  .pv-g span:not(:first-child) { text-align: right; white-space: nowrap; }
+  .pv-g.head { background: var(--hero); color: #fff; font-weight: 600; }
+  .pv-g.foot { background: var(--paper); font-weight: 800; }
+  .pv-empty { margin-top: 16px; color: var(--muted); }
+  .pv-day { margin-top: 14px; background: #e1e7ff; border-radius: 8px 8px 0 0; padding: 7px 10px; font-weight: 800; display: flex; flex-direction: column; }
+  .pv-day small { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .pv-ent { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-top: 0; }
+  .pv-ent small { display: block; color: var(--muted); font-size: 12px; }
+  .pv-ent .pv-n { font-weight: 600; overflow-wrap: anywhere; }
+  .pv-r { text-align: right; white-space: nowrap; }
+  .pv-r .in { color: var(--ok); font-weight: 600; }
+  .pv-r .out { color: var(--danger); font-weight: 600; }
+
+  /* ---------- Login / daftar ---------- */
+  #loading {
+    position: fixed; inset: 0; z-index: 30;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--paper); color: var(--muted);
+    font-weight: 600; text-align: center; padding: 24px; line-height: 1.5;
+  }
+  #loading[hidden], #auth[hidden], #app[hidden], .fld[hidden], #btnLupa[hidden], #cfgWarn[hidden] { display: none; }
+  #auth {
+    min-height: 100vh; display: flex; align-items: center;
+    padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  .auth-card { width: 100%; max-width: 420px; margin: 0 auto; }
+  .auth-hero {
+    background: var(--hero); color: var(--hero-ink);
+    border-radius: 24px 24px 0 0; padding: 28px 24px 24px;
+  }
+  .auth-hero h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+  .auth-hero p { margin-top: 8px; font-size: 14px; color: var(--hero-soft); line-height: 1.5; }
+  .auth-box { background: var(--card); border-radius: 0 0 24px 24px; padding: 20px 24px 24px; }
+  .auth-box .seg { margin-top: 0; }
+  .fld { display: block; margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .fld input {
+    display: block; width: 100%; margin-top: 6px;
+    font: inherit; font-size: 16px; font-weight: 400;
+    padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 12px;
+    background: var(--paper); color: var(--ink);
+  }
+  .fld input:focus { outline: 3px solid rgba(37,54,201,.35); outline-offset: 1px; border-color: var(--hero); }
+  .auth-msg { min-height: 20px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--danger); line-height: 1.4; }
+  .auth-msg.ok { color: var(--ok); }
+  .auth-warn {
+    margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+    background: #fff4d6; color: #7a5600; font-size: 13px; line-height: 1.45;
+  }
+  .btn-primary {
+    width: 100%; margin-top: 4px; font: inherit; font-weight: 800; font-size: 16px;
+    padding: 14px; border: 0; border-radius: 14px; cursor: pointer;
+    background: var(--hero); color: #fff;
+  }
+  .btn-primary:active, .btn-google:active { transform: scale(.98); }
+  .btn-primary:disabled, .btn-google:disabled, .link:disabled { opacity: .55; cursor: default; }
+  .link {
+    display: block; margin: 12px auto 0; font: inherit; font-size: 14px; font-weight: 600;
+    color: var(--hero); background: none; border: 0; cursor: pointer; padding: 4px;
+  }
+  .or { display: flex; align-items: center; gap: 12px; margin: 14px 0; color: var(--muted); font-size: 13px; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .btn-google {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    font: inherit; font-weight: 600; font-size: 15px; padding: 13px;
+    border: 1.5px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); cursor: pointer;
+  }
+
+  /* ---------- Bar akun di hero ---------- */
+  .userbar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 13px; color: var(--hero-soft); }
+  .userbar .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .userbar .who b { color: var(--hero-ink); font-weight: 600; }
+  .userbar .sync { white-space: nowrap; }
+  .userbar .sync.error { color: #ffd2c9; font-weight: 600; }
+  .userbar button {
+    font: inherit; font-size: 13px; font-weight: 600; color: #fff;
+    background: rgba(255,255,255,.18); border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer;
+  }
+
+  /* ---------- Pilih tanggal ---------- */
+  .datebar { display: flex; gap: 8px; align-items: center; padding: 12px 20px 0; }
+  .datebar input[type="date"] {
+    flex: 1; min-width: 0; font: inherit; font-size: 16px; font-weight: 600;
+    padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 12px;
+    background: var(--card); color: var(--ink);
+  }
+  .datebar input[type="date"]:focus { outline: 3px solid rgba(37,54,201,.35); outline-offset: 1px; border-color: var(--hero); }
+  .datebar button {
+    font: inherit; font-weight: 600; font-size: 20px; line-height: 1; height: 46px; padding: 0 14px;
+    border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer;
+  }
+  .datebar button:active { transform: scale(.97); }
+  .datebar button:disabled { opacity: .4; cursor: default; }
+  .datebar #tglHariIni { font-size: 14px; color: var(--hero); border-color: var(--hero); }
+  .datebar #tglHariIni[hidden] { display: none; }
+  .daysum { background: var(--card); border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; }
+  .daysum-title { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .daysum-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .daysum-grid small { display: block; font-size: 12px; color: var(--muted); }
+  .daysum-grid b { font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+  .daysum-grid .in { color: var(--ok); }
+  .daysum-grid .out { color: var(--danger); }
+
+  /* ---------- Rekap: tanggal & pratinjau PDF ---------- */
+  #dlgRekap input[type="date"] {
+    width: 100%; margin-top: 14px; font: inherit; font-size: 18px; font-weight: 600;
+    min-height: 50px; padding: 12px 14px;
+    border: 1.5px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink);
+  }
+  #dlgRekap input[type="checkbox"] { width: 20px; height: 20px; margin: 0; padding: 0; accent-color: var(--hero); flex-shrink: 0; }
+  .chk { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer; }
+  #ctlTanggal[hidden], #dlgRekap [hidden] { display: none; }
+  .paper.pdf { background: #cfd6db; padding: 10px; max-height: 56vh; max-height: 56dvh; display: flex; flex-direction: column; gap: 10px; }
+  .pdf-page { display: block; width: 100%; height: auto; background: #fff; border-radius: 2px; box-shadow: 0 1px 4px rgba(19,34,43,.25); }
+  .pdf-loading { color: var(--muted); font-size: 14px; text-align: center; padding: 28px 8px; }
+  @media (max-height: 480px) and (orientation: landscape) { .paper.pdf { max-height: 34dvh; } }
+
+  /* ---------- Informasi akun ---------- */
+  .acc-list { margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .acc-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); font-size: 14px; }
+  .acc-row:first-child { border-top: 0; }
+  .acc-row span { color: var(--muted); flex-shrink: 0; }
+  .acc-row b { font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+  .acc-h { font-size: 16px; font-weight: 800; margin-top: 20px; }
+  .pw { position: relative; margin-top: 6px; }
+  .pw input { margin-top: 0; padding-right: 76px; }
+  .pw button {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--hero);
+    background: none; border: 0; padding: 10px 8px; cursor: pointer;
+  }
+  #accPassBox[hidden], #accGoogle[hidden], #accPassRow[hidden] { display: none; }
+  .acc-note { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--paper); color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+  /* ---------- Kredit developer ---------- */
+  .credit { text-align: center; font-size: 12px; color: var(--muted); padding: 26px 20px 0; line-height: 1.5; }
+  .credit b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Responsif: semua perangkat ---------- */
+  :root { --maxw: 520px; color-scheme: light; }
+  html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+  body { min-height: 100dvh; padding-bottom: calc(var(--composer-h, 150px) + 24px); overflow-x: hidden; }
+  button, select, summary { touch-action: manipulation; }
+  .wrap { max-width: var(--maxw); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  .hero-amount { font-size: clamp(34px, 11vw, 64px); word-break: normal; overflow-wrap: anywhere; }
+
+  /* Kolom catat mengikuti keyboard HP (diatur lewat JS: --kb) */
+  .composer {
+    bottom: var(--kb, 0px);
+    padding: 12px max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  .composer.kb { padding-bottom: 12px; }
+  .composer-inner { max-width: var(--maxw); }
+  .toast { bottom: calc(var(--composer-h, 150px) + var(--kb, 0px) + 14px); }
+
+  /* Area sentuh yang nyaman */
+  .row-del { padding: 12px 8px; min-height: 44px; }
+  .seg button { padding: 12px 8px; }
+  .datebar input[type="date"] { min-height: 46px; }
+
+  /* Login: tetap bisa di-scroll saat keyboard muncul */
+  #auth { min-height: 100dvh; align-items: stretch; }
+  .auth-card { margin: auto; }
+
+  /* Dialog tidak pernah lebih tinggi dari layar */
+  dialog, #dlgRekap {
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .paper { max-height: 46vh; max-height: 46dvh; }
+  .pv-g span:first-child { min-width: 0; overflow-wrap: anywhere; }
+
+  /* Layar sangat kecil (mis. 320px) */
+  @media (max-width: 359px) {
+    .hero { padding-left: 16px; padding-right: 16px; }
+    .list, .recap-bar, .datebar { padding-left: 14px; padding-right: 14px; }
+    .btn-hero { font-size: 14px; padding: 12px 8px; }
+    .datebar { gap: 6px; }
+    .datebar button { padding: 0 11px; }
+    .auth-hero, .auth-box { padding-left: 18px; padding-right: 18px; }
+    .row { padding: 12px; }
+    .row-name, .row-amount { font-size: 16px; }
+  }
+
+  /* Tablet & komputer */
+  @media (min-width: 768px) {
+    :root { --maxw: 620px; }
+    .hero { margin-top: 20px; border-radius: 28px; }
+    .row-name, .row-amount { font-size: 18px; }
+    .pv-title { font-size: 20px; }
+  }
+
+  /* HP posisi landscape (layar pendek) */
+  @media (max-height: 480px) and (orientation: landscape) {
+    .hero { padding-top: calc(14px + env(safe-area-inset-top)); padding-bottom: 16px; }
+    .userbar { margin-bottom: 10px; }
+    .hero-actions { margin-top: 12px; }
+    .hint { display: none; }
+    .paper { max-height: 30dvh; }
+    dialog { padding: 18px; }
+  }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: calc(168px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    background: var(--ink); color: #fff;
+    padding: 11px 16px; border-radius: 12px;
+    font-size: 14px; display: none; align-items: center; gap: 14px;
+    max-width: 90vw; z-index: 20;
+  }
+  .toast.show { display: flex; }
+  .toast button {
+    font: inherit; font-weight: 600; color: #aab4ff;
+    background: none; border: 0; cursor: pointer; padding: 0;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<!-- Layar memuat -->
+<div id="loading"><span id="loadingMsg">Memuat…</span></div>
+
+<!-- Layar login / daftar -->
+<section id="auth" hidden>
+  <div class="auth-card">
+    <div class="auth-hero">
+      <h1>Catatan Keuangan</h1>
+      <p>Masuk atau buat akun supaya catatanmu tersimpan aman dan bisa dibuka dari HP maupun komputer.</p>
+    </div>
+    <div class="auth-box">
+      <div class="seg" role="tablist">
+        <button type="button" role="tab" id="tabMasuk" aria-selected="true">Masuk</button>
+        <button type="button" role="tab" id="tabDaftar" aria-selected="false">Daftar</button>
+      </div>
+
+      <div class="auth-warn" id="cfgWarn" hidden>
+        Firebase belum dikonfigurasi. Buka <b>firebase.js</b> dan isi <b>firebaseConfig</b> dengan data proyekmu.
+      </div>
+
+      <form id="authForm" novalidate>
+        <label class="fld" id="fldNama" hidden>Nama
+          <input id="aNama" type="text" autocomplete="name" placeholder="Nama kamu">
+        </label>
+        <label class="fld">Email
+          <input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="nama@email.com">
+        </label>
+        <label class="fld">Kata sandi
+          <input id="aPass" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter">
+        </label>
+        <div class="auth-msg" id="authMsg" role="alert"></div>
+        <button class="btn-primary" id="authSubmit" type="submit">Masuk</button>
+        <button class="link" id="btnLupa" type="button">Lupa kata sandi?</button>
+      </form>
+
+      <div class="or"><span>atau</span></div>
+      <button class="btn-google" id="btnGoogle" type="button">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Lanjutkan dengan Google
+      </button>
+    </div>
+    <div class="credit">Developer: <b>vixzaa</b> &amp; <b>andrew</b></div>
+  </div>
+</section>
+
+<!-- Aplikasi (tampil setelah login) -->
+<div id="app" hidden>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="userbar">
+      <span class="who" id="userName"></span>
+      <span class="sync" id="saveStatus"></span>
+      <button id="btnAkun" type="button">Akun</button>
+      <button id="btnKeluar" type="button">Keluar</button>
+    </div>
+    <div class="hero-label">Gaji</div>
+    <div class="hero-amount" id="saldo">Rp 0</div>
+    <div class="hero-meta" id="meta"></div>
+    <div class="hero-actions">
+      <button class="btn-hero" id="btnEdit">Edit gaji</button>
+      <button class="btn-hero solid" id="btnTambah">Tambah gaji</button>
+    </div>
+  </header>
+
+  <div class="recap-bar">
+    <button class="btn-recap" id="btnRekap">Rekap bulanan (PDF)</button>
+  </div>
+
+  <div class="datebar">
+    <button id="tglPrev" type="button" aria-label="Hari sebelumnya">&#8249;</button>
+    <input type="date" id="tglPilih" aria-label="Pilih tanggal">
+    <button id="tglNext" type="button" aria-label="Hari berikutnya">&#8250;</button>
+    <button id="tglHariIni" type="button" hidden>Hari ini</button>
+  </div>
+
+  <main class="list" id="list"></main>
+
+  <div class="credit">Developer: <b>vixzaa</b> &amp; <b>andrew</b></div>
+</div>
+
+<!-- Input catatan -->
+<div class="composer">
+  <div class="composer-inner">
+    <div class="composer-row">
+      <input id="catatan" type="text" inputmode="text" autocomplete="off" enterkeyhint="done"
+             placeholder="rokok 20.000" aria-label="Catatan pengeluaran">
+      <button class="btn-add" id="btnCatat">Catat</button>
+    </div>
+    <div class="hint" id="hint">Contoh: rokok 20, makan 30, minum 50. Angka di bawah 1.000 otomatis jadi ribuan.</div>
+  </div>
+</div>
+
+</div><!-- /#app -->
+
+<!-- Dialog informasi akun -->
+<dialog id="dlgAkun">
+  <h2>Informasi akun</h2>
+  <div class="acc-list">
+    <div class="acc-row"><span>Nama</span><b id="accNama"></b></div>
+    <div class="acc-row"><span>Email</span><b id="accEmail"></b></div>
+    <div class="acc-row"><span>Akun dibuat</span><b id="accDibuat"></b></div>
+    <div class="acc-row"><span>Masuk dengan</span><b id="accMetode"></b></div>
+    <div class="acc-row" id="accPassRow"><span>Kata sandi</span><b>••••••••</b></div>
+  </div>
+
+  <div id="accPassBox">
+    <div class="acc-h">Ganti kata sandi</div>
+    <div class="acc-note">Kata sandi yang sedang dipakai tidak bisa ditampilkan. Firebase hanya menyimpannya dalam bentuk terenkripsi, bahkan pemilik proyek pun tidak bisa melihatnya. Anda bisa menggantinya di sini.</div>
+    <label class="fld">Kata sandi lama
+      <div class="pw"><input id="accCur" type="password" autocomplete="current-password" placeholder="Kata sandi sekarang"><button type="button" data-toggle="accCur">Lihat</button></div>
+    </label>
+    <label class="fld">Kata sandi baru
+      <div class="pw"><input id="accNew" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"><button type="button" data-toggle="accNew">Lihat</button></div>
+    </label>
+    <div class="auth-msg" id="accMsg" role="alert"></div>
+    <button class="btn-primary" id="accSimpan" type="button">Ganti kata sandi</button>
+    <button class="link" id="accReset" type="button">Lupa kata sandi lama? Kirim email reset</button>
+  </div>
+
+  <div class="acc-note" id="accGoogle" hidden>Akun ini masuk lewat Google, jadi tidak memiliki kata sandi di aplikasi ini. Kata sandi dikelola di akun Google Anda.</div>
+
+  <div class="dlg-actions"><button id="accTutup" type="button">Tutup</button></div>
+</dialog>
+
+<!-- Dialog gaji -->
+<dialog id="dlg">
+  <h2 id="dlgTitle">Edit gaji</h2>
+  <p id="dlgDesc"></p>
+  <input id="dlgInput" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="Jumlah gaji">
+  <div class="dlg-actions">
+    <button id="dlgBatal">Batal</button>
+    <button class="primary" id="dlgSimpan">Simpan</button>
+  </div>
+</dialog>
+
+<!-- Dialog rekap bulanan -->
+<dialog id="dlgRekap">
+  <h2>Pratinjau PDF</h2>
+  <p>Pilih jenis laporan dan periode, lihat pratinjaunya, lalu unduh sebagai PDF.</p>
+  <div class="seg" role="tablist">
+    <button type="button" role="tab" id="tabBulanan" aria-selected="true">Rekap bulanan</button>
+    <button type="button" role="tab" id="tabHarian" aria-selected="false">Rincian harian</button>
+  </div>
+  <div id="ctlTanggal" hidden>
+    <input type="date" id="rekapTanggal" aria-label="Pilih tanggal">
+    <label class="chk"><input type="checkbox" id="hariSemua"> Tampilkan satu bulan penuh</label>
+  </div>
+  <select id="bulan" aria-label="Pilih bulan"></select>
+  <div class="paper" id="preview" tabindex="0" aria-live="polite"></div>
+  <div class="dlg-actions">
+    <button id="rekapTutup" type="button">Tutup</button>
+    <button class="primary" id="rekapUnduh" type="button">Unduh PDF</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastUndo">Batalkan</button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script type="module">
+import * as fb from './firebase.js';
+
+(() => {
+  /* ---------- Penyimpanan (Firebase Firestore) ---------- */
+  const LEGACY_KEY = 'catatan-keuangan-v1'; // data lama versi tanpa akun
+  let state = { salary: 0, items: [], log: [] };
+  let currentUser = null, unsub = null, saveTimer = null, loadTimer = null, loaded = false;
+
+  const normalize = d => ({
+    salary: Number(d && d.salary) || 0,
+    items: Array.isArray(d && d.items) ? d.items : [],
+    log: (Array.isArray(d && d.log) ? d.log : []).filter(l => l.delta > 0) // riwayat tambah gaji: { ts, delta }
+  });
+  const readLegacy = () => {
+    try { const r = localStorage.getItem(LEGACY_KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; }
+  };
+  const clearLegacy = () => { try { localStorage.removeItem(LEGACY_KEY); } catch (e) {} };
+
+  // Dipanggil setiap data berubah; ditunda sebentar agar tidak menulis berulang.
+  const save = () => {
+    if (!currentUser || !loaded) return;
+    setSaveStatus('saving');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, 400);
+  };
+  async function flush() {
+    clearTimeout(saveTimer);
+    if (!currentUser) return;
+    try { await fb.saveData(currentUser.uid, state); setSaveStatus('saved'); }
+    catch (e) { setSaveStatus('error'); }
+  }
+  function setSaveStatus(s) {
+    const el = document.getElementById('saveStatus');
+    el.textContent = { saving: 'Menyimpan…', saved: 'Tersimpan', error: 'Gagal menyimpan' }[s] || '';
+    el.className = 'sync' + (s === 'error' ? ' error' : '');
+  }
+
+  /* ---------- Util angka ---------- */
+  const group = s => s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const rp = n => (n < 0 ? '-Rp ' : 'Rp ') + group(String(Math.abs(Math.round(n))));
+
+  // Beri titik ribuan otomatis pada setiap angka di dalam input, jaga posisi kursor.
+  function liveFormat(el) {
+    const pos = el.selectionStart, v = el.value;
+    const atEnd = pos === v.length;
+    const digitsBefore = (v.slice(0, pos).match(/\d/g) || []).length;
+    const nv = v.replace(/\d[\d.]*/g, m => group(m.replace(/\./g, '')));
+    if (nv === v) return;
+    el.value = nv;
+    if (atEnd) { el.setSelectionRange(nv.length, nv.length); return; }
+    let seen = 0, i = 0;
+    if (digitsBefore > 0) {
+      for (; i < nv.length; i++) { if (/\d/.test(nv[i]) && ++seen === digitsBefore) { i++; break; } }
+    } else i = pos;
+    el.setSelectionRange(i, i);
+  }
+
+  /* ---------- Baca catatan: "rokok 20, makan 30.000" ---------- */
+  function parseNotes(text) {
+    const out = [], bad = [];
+    const clean = t => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/\s+/g, ' ').trim();
+    const cap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Pengeluaran';
+
+    // Pemisah tegas: koma, titik koma, atau baris baru
+    text.split(/[,;\n]+/).forEach(raw => {
+      const seg = raw
+        .replace(/\brp\.?\s*(?=\d)/gi, '')            // "rp 20.000" -> "20.000"
+        .replace(/(\d)\s*(?:rb|ribu|k)\b/gi, '$1')     // "20rb" -> "20"
+        .trim();
+      if (!seg) return;
+
+      // Pecah jadi [teks, angka, teks, angka, ..., teks]
+      const parts = seg.split(/(\d[\d.]*)/);
+      const nums = parts.filter((_, i) => i % 2 === 1);
+      const texts = parts.filter((_, i) => i % 2 === 0).map(clean);
+      if (!nums.length) { bad.push(clean(seg)); return; }
+
+      // "rokok 20 minum 35" (nama dulu) atau "20 rokok 35 minum" (angka dulu)
+      const numberFirst = texts[0] === '';
+      nums.forEach((n, i) => {
+        const name = numberFirst ? texts[i + 1] : texts[i];
+        let amount = parseInt(n.replace(/\./g, ''), 10);
+        if (!amount) { bad.push(name || n); return; }
+        if (amount < 1000) amount *= 1000;
+        out.push({ name: cap(name), amount });
+      });
+      // kata di akhir yang tidak punya angka, misalnya "... makan"
+      if (!numberFirst && texts[nums.length]) bad.push(texts[nums.length]);
+    });
+    return { out, bad };
+  }
+
+  /* ---------- Tampilan ---------- */
+  const $ = id => document.getElementById(id);
+  const spent = () => state.items.reduce((a, b) => a + b.amount, 0);
+
+  /* ---------- Tanggal terpilih ---------- */
+  const pad2 = n => String(n).padStart(2, '0');
+  const dkey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+  const todayKey = () => dkey(Date.now());
+  const dateFromKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+  const shiftKey = (k, n) => { const d = dateFromKey(k); d.setDate(d.getDate() + n); return dkey(d.getTime()); };
+  let selDate = todayKey();
+
+  // Tanggal paling awal yang boleh dilihat = tanggal akun dibuat
+  // (atau tanggal catatan tertua bila ada data lama yang dipindahkan).
+  function accountStartKey() {
+    const c = currentUser && currentUser.metadata ? Date.parse(currentUser.metadata.creationTime) : NaN;
+    let t = isNaN(c) ? Date.now() : c;
+    state.items.forEach(i => { if (i.ts < t) t = i.ts; });
+    state.log.forEach(l => { if (l.ts < t) t = l.ts; });
+    const k = dkey(t), today = todayKey();
+    return k > today ? today : k;
+  }
+
+  // Ringkasan satu hari: catatan, pemasukan, pengeluaran, saldo awal & akhir hari
+  function dayStats(k) {
+    const start = dateFromKey(k).getTime(), end = dateFromKey(shiftKey(k, 1)).getTime();
+    const items = state.items.filter(i => i.ts >= start && i.ts < end).sort((a, b) => b.ts - a.ts);
+    const keluar = items.reduce((a, b) => a + b.amount, 0);
+    const masuk = state.log.filter(l => l.ts >= start && l.ts < end).reduce((a, b) => a + b.delta, 0);
+    const spentBefore = state.items.filter(i => i.ts < start).reduce((a, b) => a + b.amount, 0);
+    const deltaSince = state.log.filter(l => l.ts >= start).reduce((a, b) => a + b.delta, 0);
+    const awal = (state.salary - deltaSince) - spentBefore;
+    return { items, masuk, keluar, awal, akhir: awal + masuk - keluar };
+  }
+
+  function dayLabel(ts) {
+    const d = new Date(ts), t = new Date();
+    const same = (a, b) => a.toDateString() === b.toDateString();
+    const y = new Date(); y.setDate(t.getDate() - 1);
+    if (same(d, t)) return 'Hari ini';
+    if (same(d, y)) return 'Kemarin';
+    return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
+  function render() {
+    const s = spent(), sisa = state.salary - s;
+    const el = $('saldo');
+    el.textContent = rp(sisa);
+    el.classList.toggle('minus', sisa < 0);
+    $('meta').innerHTML = 'Gaji <b>' + rp(state.salary) + '</b> &nbsp;·&nbsp; Terpakai <b>' + rp(s) + '</b>';
+
+    const list = $('list');
+    list.innerHTML = '';
+
+    const today = todayKey(), minKey = accountStartKey();
+    if (selDate < minKey) selDate = minKey;
+    if (selDate > today) selDate = today;
+    const isToday = selDate === today;
+    $('tglPilih').value = selDate;
+    $('tglPilih').min = minKey;
+    $('tglPilih').max = today;
+    $('tglPrev').disabled = selDate <= minKey;
+    $('tglNext').disabled = isToday;
+    $('tglHariIni').hidden = isToday;
+
+    if (state.salary === 0 && !state.items.length) {
+      list.innerHTML = '<div class="empty"><b>Isi gaji dulu.</b><br>Tekan <b>Edit gaji</b> di atas untuk mengisi gaji bulan ini, lalu catat pengeluaranmu di kolom bawah.</div>';
+      return;
+    }
+
+    const ds = dayStats(selDate);
+    const sum = document.createElement('section');
+    sum.className = 'daysum';
+    sum.innerHTML = '<div class="daysum-title"></div><div class="daysum-grid">' +
+      '<div><small>Masuk</small><b class="in"></b></div>' +
+      '<div><small>Keluar</small><b class="out"></b></div>' +
+      '<div><small>Sisa akhir hari</small><b></b></div></div>';
+    const full = dateFromKey(selDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    sum.querySelector('.daysum-title').textContent = (isToday ? 'Hari ini · ' : '') + full;
+    const cells = sum.querySelectorAll('.daysum-grid b');
+    cells[0].textContent = rp(ds.masuk);
+    cells[1].textContent = rp(-ds.keluar);
+    cells[2].textContent = rp(ds.akhir);
+    list.appendChild(sum);
+
+    if (!ds.items.length) {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.innerHTML = isToday
+        ? '<b>Belum ada catatan hari ini.</b><br>Ketik di kolom bawah, misalnya <b>rokok 20</b>, lalu tekan Catat.'
+        : '<b>Tidak ada catatan pada tanggal ini.</b>';
+      list.appendChild(e);
+      return;
+    }
+
+    const rows = document.createElement('div');
+    rows.className = 'rows';
+    ds.items.forEach(it => {
+      const r = document.createElement('div');
+      r.className = 'row';
+      const time = new Date(it.ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+      r.innerHTML = '<div class="row-name"><span class="n"></span><span class="row-time"></span></div><div class="row-amount"></div><button class="row-del" aria-label="Hapus catatan">Hapus</button>';
+      r.querySelector('.n').textContent = it.name;
+      r.querySelector('.row-time').textContent = time;
+      r.querySelector('.row-amount').textContent = '-' + rp(it.amount);
+      r.querySelector('.row-del').onclick = () => removeItem(it.id);
+      rows.appendChild(r);
+    });
+    list.appendChild(rows);
+  }
+
+  /* ---------- Toast + batalkan ---------- */
+  let toastTimer, undoFn = null;
+  function toast(msg, undo) {
+    $('toastMsg').textContent = msg;
+    undoFn = undo || null;
+    $('toastUndo').style.display = undo ? '' : 'none';
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4500);
+  }
+  $('toastUndo').onclick = () => { if (undoFn) undoFn(); $('toast').classList.remove('show'); };
+
+  /* ---------- Catat pengeluaran ---------- */
+  const input = $('catatan'), hint = $('hint');
+  const defaultHint = hint.textContent;
+
+  input.addEventListener('input', () => {
+    liveFormat(input);
+    const { out, bad } = parseNotes(input.value);
+    if (!input.value.trim()) { hint.textContent = defaultHint; hint.className = 'hint'; return; }
+    hint.className = bad.length ? 'hint error' : 'hint preview';
+    let msg = out.map(o => o.name + ' ' + rp(o.amount)).join('  ·  ');
+    if (out.length > 1) msg += '  =  ' + rp(sumOf(out, o => o.amount));
+    if (bad.length) msg += (msg ? '   |   ' : '') + 'Tanpa angka, tidak dicatat: ' + bad.join(', ');
+    hint.textContent = msg || 'Tambahkan angka, misalnya: rokok 20';
+  });
+
+  function addNotes() {
+    const { out, bad } = parseNotes(input.value);
+    if (!out.length) {
+      hint.className = 'hint error';
+      hint.textContent = 'Belum ada angka. Contoh: rokok 20 atau makan 30.000';
+      return;
+    }
+    const now = Date.now();
+    const added = out.map((o, i) => ({ id: now + '-' + i, name: o.name, amount: o.amount, ts: now + i }));
+    state.items.push(...added);
+    selDate = todayKey(); // catatan baru selalu masuk ke hari ini
+    save();
+    input.value = '';
+    hint.className = 'hint'; hint.textContent = defaultHint;
+    render();
+    const total = added.reduce((a, b) => a + b.amount, 0);
+    toast('Tercatat ' + rp(total) + (bad.length ? ' (dilewati karena tanpa angka: ' + bad.join(', ') + ')' : ''), () => {
+      const ids = new Set(added.map(a => a.id));
+      state.items = state.items.filter(x => !ids.has(x.id));
+      save(); render();
+    });
+  }
+  $('btnCatat').onclick = addNotes;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addNotes(); } });
+
+  function removeItem(id) {
+    const idx = state.items.findIndex(x => x.id === id);
+    if (idx < 0) return;
+    const [item] = state.items.splice(idx, 1);
+    save(); render();
+    toast('Catatan dihapus', () => { state.items.push(item); save(); render(); });
+  }
+
+  /* ---------- Edit / tambah gaji ---------- */
+  const dlg = $('dlg'), dlgInput = $('dlgInput');
+  let mode = 'edit';
+
+  function openDlg(m) {
+    mode = m;
+    if (m === 'edit') {
+      $('dlgTitle').textContent = 'Edit gaji';
+      $('dlgDesc').textContent = 'Ganti total gaji. Pengeluaran yang sudah dicatat tetap dihitung. Ini koreksi, bukan pemasukan baru.';
+      dlgInput.value = state.salary ? group(String(state.salary)) : '';
+    } else {
+      $('dlgTitle').textContent = 'Tambah gaji';
+      $('dlgDesc').textContent = 'Jumlah ini ditambahkan ke gaji sekarang (' + rp(state.salary) + ').';
+      dlgInput.value = '';
+    }
+    dlg.showModal();
+    setTimeout(() => { dlgInput.focus(); dlgInput.select(); }, 30);
+  }
+  dlgInput.addEventListener('input', () => {
+    const d = dlgInput.value.replace(/\D/g, '');
+    dlgInput.value = group(d);
+  });
+  function saveSalary() {
+    const raw = dlgInput.value.replace(/\D/g, '');
+    if (raw === '' && mode === 'tambah') { dlg.close(); return; }
+    let n = parseInt(raw || '0', 10);
+    if (n > 0 && n < 1000) n *= 1000; // 1000 → ribuan, sama seperti catatan
+    const prev = state.salary;
+    state.salary = mode === 'edit' ? n : prev + n;
+    // Hanya "Tambah gaji" tercatat sebagai pemasukan; "Edit gaji" dianggap koreksi.
+    if (mode === 'tambah' && n > 0) state.log.push({ ts: Date.now(), delta: n });
+    save(); render(); dlg.close();
+  }
+  $('btnEdit').onclick = () => openDlg('edit');
+  $('btnTambah').onclick = () => openDlg('tambah');
+  $('dlgBatal').onclick = () => dlg.close();
+  $('dlgSimpan').onclick = saveSalary;
+  dlgInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveSalary(); } });
+
+  /* ---------- Rekap bulanan + PDF ---------- */
+  const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const sumOf = (arr, f) => arr.reduce((a, b) => a + f(b), 0);
+  const monthKey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const monthLabel = k => { const [y, m] = k.split('-'); return BULAN[+m - 1] + ' ' + y; };
+
+  function monthStats(k) {
+    const [y, m] = k.split('-').map(Number);
+    const start = new Date(y, m - 1, 1).getTime();
+    const end = new Date(y, m, 1).getTime();
+    const items = state.items.filter(i => i.ts >= start && i.ts < end).sort((a, b) => a.ts - b.ts);
+    const spentIn = sumOf(items, i => i.amount);
+    const spentBefore = sumOf(state.items.filter(i => i.ts < start), i => i.amount);
+    const deltaIn = sumOf(state.log.filter(l => l.ts >= start && l.ts < end), l => l.delta);
+    const deltaSince = sumOf(state.log.filter(l => l.ts >= start), l => l.delta);
+    const awal = (state.salary - deltaSince) - spentBefore;
+    const akhir = awal + deltaIn - spentIn;
+    return { items, spentIn, deltaIn, awal, akhir };
+  }
+
+  function monthOptions() {
+    const keys = new Set([monthKey(Date.now())]);
+    state.items.forEach(i => keys.add(monthKey(i.ts)));
+    state.log.forEach(l => keys.add(monthKey(l.ts)));
+    return [...keys].sort().reverse();
+  }
+
+  const bulanSel = $('bulan'), pv = $('preview');
+  let tab = 'bulanan';
+
+  const jam = ts => new Date(ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  const pvRow = (a, b, cls) => { const r = el('div', 'pv-row' + (cls ? ' ' + cls : '')); r.append(el('span', null, a), el('span', null, b)); return r; };
+  const pvGrid = (cells, cls) => { const r = el('div', 'pv-g' + (cls ? ' ' + cls : '')); cells.forEach(c => r.appendChild(el('span', null, c))); return r; };
+
+  // Data harian: pemasukan (perubahan gaji) dan pengeluaran, urut waktu, dengan saldo berjalan
+  function dailyData(k) {
+    const [y, m] = k.split('-').map(Number);
+    const start = new Date(y, m - 1, 1).getTime(), end = new Date(y, m, 1).getTime();
+    const s = monthStats(k);
+    const events = [
+      ...s.items.map(i => ({ ts: i.ts, label: i.name, masuk: 0, keluar: i.amount })),
+      ...state.log.filter(l => l.ts >= start && l.ts < end)
+        .map(l => ({ ts: l.ts, label: 'Penambahan gaji', masuk: l.delta, keluar: 0 }))
+    ].sort((a, b) => a.ts - b.ts);
+    let saldo = s.awal;
+    const days = [];
+    events.forEach(e => {
+      saldo += e.masuk - e.keluar;
+      const key = new Date(e.ts).toDateString();
+      let d = days.find(x => x.key === key);
+      if (!d) days.push(d = { key, ts: e.ts, masuk: 0, keluar: 0, rows: [] });
+      d.masuk += e.masuk; d.keluar += e.keluar;
+      d.rows.push({ ...e, saldo });
+    });
+    return { s, days };
+  }
+
+  function previewBulanan(k) {
+    const s = monthStats(k);
+    pv.append(el('div', 'pv-title', 'Rekap Keuangan'), el('div', 'pv-sub', monthLabel(k)));
+    const box = el('div', 'pv-box');
+    box.append(
+      pvRow('Saldo awal bulan', rp(s.awal)),
+      pvRow('Penambahan gaji', rp(s.deltaIn)),
+      pvRow('Total pengeluaran', rp(-s.spentIn)),
+      pvRow('Sisa akhir bulan', rp(s.akhir), 'bold')
+    );
+    pv.append(box);
+    if (!s.items.length) {
+      pv.append(el('p', 'pv-empty', 'Belum ada pengeluaran yang dicatat pada bulan ini.'));
+      return;
+    }
+    pv.append(el('div', 'pv-h', 'Pengeluaran per catatan'),
+              el('div', 'pv-note', 'Catatan dengan tulisan yang sama dijumlahkan otomatis selama sebulan.'));
+    const tbl = el('div', 'pv-box');
+    tbl.append(pvGrid(['Catatan', 'Kali', 'Total', 'Porsi'], 'head'));
+    groupItems(s.items).forEach(g =>
+      tbl.append(pvGrid([g.name, g.n + 'x', rp(g.total), Math.round(g.total / s.spentIn * 100) + '%'])));
+    tbl.append(pvGrid(['Total', s.items.length + 'x', rp(s.spentIn), '100%'], 'foot'));
+    pv.append(tbl);
+  }
+
+  function previewHarian(k, day) {
+    let { s, days } = dailyData(k);
+    const per = day ? 'hari' : 'bulan';
+    if (day) {
+      const ds = dayStats(day);
+      days = days.filter(d => dkey(d.ts) === day);
+      s = { awal: ds.awal, deltaIn: ds.masuk, spentIn: ds.keluar, akhir: ds.akhir };
+    }
+    const sub = day
+      ? dateFromKey(day).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      : monthLabel(k);
+    pv.append(el('div', 'pv-title', 'Rincian Harian'), el('div', 'pv-sub', sub));
+    const top = el('div', 'pv-box');
+    top.append(pvRow('Saldo awal ' + per, rp(s.awal), 'bold'));
+    pv.append(top);
+    if (!days.length) {
+      pv.append(el('p', 'pv-empty', 'Tidak ada pemasukan atau pengeluaran pada ' + (day ? 'tanggal ini.' : 'bulan ini.')));
+      return;
+    }
+    days.forEach(d => {
+      const head = el('div', 'pv-day');
+      head.append(
+        el('span', null, new Date(d.ts).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })),
+        el('small', null, 'Masuk ' + rp(d.masuk) + '  |  Keluar ' + rp(d.keluar))
+      );
+      pv.append(head);
+      d.rows.forEach(r => {
+        const row = el('div', 'pv-ent');
+        const left = el('div');
+        left.append(el('div', 'pv-n', r.label), el('small', null, jam(r.ts)));
+        const right = el('div', 'pv-r');
+        const plus = r.masuk > 0;
+        right.append(
+          el('div', plus ? 'in' : 'out', plus ? '+' + rp(r.masuk) : rp(-r.keluar)),
+          el('small', null, 'Saldo ' + rp(r.saldo))
+        );
+        row.append(left, right);
+        pv.append(row);
+      });
+    });
+    const end = el('div', 'pv-box');
+    end.append(
+      pvRow('Total pemasukan', rp(s.deltaIn)),
+      pvRow('Total pengeluaran', rp(-s.spentIn)),
+      pvRow('Sisa akhir ' + per, rp(s.akhir), 'bold')
+    );
+    pv.append(end);
+  }
+
+  /* ---- Pratinjau PDF: PDF asli dirender dengan pdf.js agar sama di semua perangkat ---- */
+  let harianBulan = false, dayPick = '', previewToken = 0, currentPdf = null;
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  // Tanggal harus berada di antara tanggal akun dibuat dan hari ini
+  function clampDay(k) {
+    const t = todayKey(), m = accountStartKey();
+    k = k || selDate;
+    return k > t ? t : (k < m ? m : k);
+  }
+
+  // Nama pengguna untuk nama file: nama akun (Google / isian saat daftar),
+  // atau bagian depan email bila nama kosong. Karakter terlarang pada nama file dibuang.
+  function fileUserName() {
+    const u = currentUser || {};
+    const raw = u.displayName || (u.email ? u.email.split('@')[0] : '') || '';
+    return raw.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+
+  // Membuat PDF sesuai pilihan saat ini
+  function buildCurrent() {
+    const k = bulanSel.value;
+    const bulanCaps = monthLabel(k).toUpperCase();                      // OKTOBER 2026
+    const who = fileUserName() ? ' ' + fileUserName() : '';             // " ADIT"
+    if (tab === 'bulanan') return { doc: buildPdf(k), name: 'KEUANGAN ' + bulanCaps + who + '.pdf', label: 'Rekap ' + monthLabel(k) };
+    if (harianBulan) return { doc: buildDailyPdf(k), name: 'KEUANGAN HARIAN ' + bulanCaps + who + '.pdf', label: 'Rincian harian ' + monthLabel(k) };
+    const d = clampDay(dayPick);
+    const [yy, mm, dd] = d.split('-').map(Number);
+    const tglCaps = dd + ' ' + BULAN[mm - 1].toUpperCase() + ' ' + yy;  // 11 OKTOBER 2026
+    return { doc: buildDailyPdf(null, d), name: 'KEUANGAN ' + tglCaps + who + '.pdf', label: 'Rincian harian ' + dd + ' ' + BULAN[mm - 1] + ' ' + yy };
+  }
+
+  function syncControls() {
+    const harian = tab === 'harian';
+    $('tabBulanan').setAttribute('aria-selected', String(!harian));
+    $('tabHarian').setAttribute('aria-selected', String(harian));
+    $('ctlTanggal').hidden = !harian;
+    $('rekapTanggal').hidden = harianBulan;
+    bulanSel.hidden = harian && !harianBulan;
+    $('rekapUnduh').textContent = harian ? 'Unduh PDF harian' : 'Unduh PDF bulanan';
+  }
+
+  // Tampilan teks, dipakai bila pdf.js gagal dimuat
+  function fallbackPreview() {
+    pv.className = 'paper';
+    pv.innerHTML = '';
+    pv.append(el('div', 'pv-note', 'Pratinjau PDF tidak bisa dimuat (periksa koneksi internet). Ini tampilan teks; tombol Unduh PDF tetap berfungsi.'));
+    const k = bulanSel.value;
+    if (tab === 'harian') previewHarian(k, harianBulan ? null : clampDay(dayPick)); else previewBulanan(k);
+  }
+
+  async function renderPreview() {
+    if (!$('dlgRekap').open) return;
+    const token = ++previewToken;
+    syncControls();
+    pv.scrollTop = 0;
+    try { currentPdf = buildCurrent(); } catch (e) { currentPdf = null; }
+    if (!currentPdf || !window.pdfjsLib) { fallbackPreview(); return; }
+
+    pv.className = 'paper pdf';
+    pv.innerHTML = '<div class="pdf-loading">Menyiapkan pratinjau…</div>';
+    try {
+      const pdf = await pdfjsLib.getDocument({
+        data: currentPdf.doc.output('arraybuffer'),
+        standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/'
+      }).promise;
+      if (token !== previewToken) return;
+      const width = Math.max(240, pv.clientWidth - 20);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      for (let n = 1; n <= pdf.numPages; n++) {
+        const page = await pdf.getPage(n);
+        if (token !== previewToken) return;
+        const base = page.getViewport({ scale: 1 });
+        const vp = page.getViewport({ scale: (width / base.width) * dpr });
+        const c = document.createElement('canvas');
+        c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+        c.className = 'pdf-page';
+        c.setAttribute('role', 'img');
+        c.setAttribute('aria-label', 'Halaman ' + n + ' dari ' + pdf.numPages);
+        await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+        if (token !== previewToken) return;
+        if (n === 1) pv.innerHTML = '';
+        pv.appendChild(c);
+      }
+    } catch (e) {
+      if (token === previewToken) fallbackPreview();
+    }
+  }
+
+  function openRekap() {
+    bulanSel.innerHTML = '';
+    monthOptions().forEach(k => {
+      const o = document.createElement('option');
+      o.value = k; o.textContent = monthLabel(k);
+      bulanSel.appendChild(o);
+    });
+    dayPick = clampDay(selDate);
+    const tg = $('rekapTanggal');
+    tg.min = accountStartKey(); tg.max = todayKey(); tg.value = dayPick;
+    $('hariSemua').checked = harianBulan;
+    $('dlgRekap').showModal();
+    renderPreview();
+  }
+
+  bulanSel.addEventListener('change', renderPreview);
+  $('rekapTanggal').addEventListener('change', e => {
+    dayPick = clampDay(e.target.value);
+    e.target.value = dayPick;
+    renderPreview();
+  });
+  $('hariSemua').addEventListener('change', e => { harianBulan = e.target.checked; renderPreview(); });
+  $('tabBulanan').onclick = () => { tab = 'bulanan'; renderPreview(); };
+  $('tabHarian').onclick = () => { tab = 'harian'; renderPreview(); };
+  $('btnRekap').onclick = openRekap;
+  $('rekapTutup').onclick = () => $('dlgRekap').close();
+  $('dlgRekap').addEventListener('close', () => { previewToken++; pv.innerHTML = ''; currentPdf = null; });
+
+  function buildPdf(k) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const M = 40, BLUE = [37, 54, 201];
+    const s = monthStats(k);
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(19, 34, 43);
+    doc.text('Rekap Keuangan', M, 58);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(93, 112, 121);
+    doc.text(monthLabel(k), M, 78);
+
+    // Ringkasan
+    doc.autoTable({
+      startY: 100,
+      body: [
+        ['Saldo awal bulan', rp(s.awal)],
+        ['Penambahan gaji', rp(s.deltaIn)],
+        ['Total pengeluaran', rp(-s.spentIn)],
+        ['Sisa akhir bulan', rp(s.akhir)]
+      ],
+      theme: 'grid',
+      styles: { fontSize: 12, cellPadding: 8, textColor: [19, 34, 43], lineColor: [213, 221, 225] },
+      columnStyles: { 0: { cellWidth: 260 }, 1: { halign: 'right' } },
+      margin: { left: M, right: M },
+      didParseCell: d => { if (d.row.index === 3) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [238, 242, 244]; } }
+    });
+
+    if (!s.items.length) {
+      doc.setFontSize(12); doc.setTextColor(93, 112, 121);
+      doc.text('Belum ada pengeluaran yang dicatat pada bulan ini.', M, doc.lastAutoTable.finalY + 32);
+    } else {
+      // Dikelompokkan per catatan (tulisan sama = dijumlahkan)
+      const groups = groupItems(s.items);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(19, 34, 43);
+      doc.text('Pengeluaran per catatan', M, doc.lastAutoTable.finalY + 36);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(93, 112, 121);
+      doc.text('Catatan dengan tulisan yang sama dijumlahkan otomatis selama sebulan.', M, doc.lastAutoTable.finalY + 52);
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 62,
+        head: [['Catatan', 'Berapa kali', 'Total', 'Porsi']],
+        body: groups.map(g => [g.name, g.n + 'x', rp(g.total), Math.round(g.total / s.spentIn * 100) + '%']),
+        foot: [['Total', s.items.length + 'x', rp(s.spentIn), '100%']],
+        headStyles: { fillColor: BLUE, textColor: 255 },
+        footStyles: { fillColor: [238, 242, 244], textColor: [19, 34, 43], fontStyle: 'bold' },
+        styles: { fontSize: 11, cellPadding: 6 },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+        margin: { left: M, right: M }
+      });
+    }
+
+    // Nomor halaman
+    const pages = doc.getNumberOfPages(), H = doc.internal.pageSize.getHeight(), W = doc.internal.pageSize.getWidth();
+    for (let p = 1; p <= pages; p++) {
+      doc.setPage(p); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(140, 150, 156);
+      doc.text('Catatan Keuangan - ' + monthLabel(k), M, H - 24);
+      doc.text('Halaman ' + p + ' dari ' + pages, W - M, H - 24, { align: 'right' });
+    }
+    return doc;
+  }
+
+  // day = 'YYYY-MM-DD' → rincian satu tanggal; tanpa day → rincian satu bulan (k = 'YYYY-MM')
+  function buildDailyPdf(k, day) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const M = 40, BLUE = [37, 54, 201];
+    let from, to, awal, subtitle;
+    if (day) {
+      from = dateFromKey(day).getTime(); to = dateFromKey(shiftKey(day, 1)).getTime();
+      awal = dayStats(day).awal;
+      subtitle = dateFromKey(day).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    } else {
+      const [y, m] = k.split('-').map(Number);
+      from = new Date(y, m - 1, 1).getTime(); to = new Date(y, m, 1).getTime();
+      awal = monthStats(k).awal;
+      subtitle = monthLabel(k);
+    }
+    const events = [
+      ...state.items.filter(i => i.ts >= from && i.ts < to).map(i => ({ ts: i.ts, label: i.name, masuk: 0, keluar: i.amount })),
+      ...state.log.filter(l => l.ts >= from && l.ts < to).map(l => ({ ts: l.ts, label: 'Penambahan gaji', masuk: l.delta, keluar: 0 }))
+    ].sort((a, b) => a.ts - b.ts);
+    const tMasuk = sumOf(events, e => e.masuk), tKeluar = sumOf(events, e => e.keluar);
+    const akhir = awal + tMasuk - tKeluar;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(19, 34, 43);
+    doc.text('Rincian Harian', M, 58);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(93, 112, 121);
+    doc.text(subtitle, M, 78);
+
+    let startY = 96;
+    if (day) {
+      // Ringkasan satu hari
+      doc.autoTable({
+        startY: 100,
+        body: [
+          ['Saldo awal hari', rp(awal)],
+          ['Pemasukan', rp(tMasuk)],
+          ['Pengeluaran', rp(-tKeluar)],
+          ['Sisa akhir hari', rp(akhir)]
+        ],
+        theme: 'grid',
+        styles: { fontSize: 12, cellPadding: 8, textColor: [19, 34, 43], lineColor: [213, 221, 225] },
+        columnStyles: { 0: { cellWidth: 260 }, 1: { halign: 'right' } },
+        margin: { left: M, right: M },
+        didParseCell: d => { if (d.row.index === 3) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [238, 242, 244]; } }
+      });
+      startY = doc.lastAutoTable.finalY + 24;
+    }
+
+    if (!events.length) {
+      doc.setFontSize(12); doc.setTextColor(93, 112, 121);
+      doc.text(day ? 'Tidak ada pemasukan atau pengeluaran pada tanggal ini.'
+                   : 'Belum ada pemasukan atau pengeluaran yang dicatat pada bulan ini.', M, startY + 14);
+    } else {
+      const days = [];
+      events.forEach(e => {
+        const key = new Date(e.ts).toDateString();
+        let d = days.find(x => x.key === key);
+        if (!d) days.push(d = { key, ts: e.ts, list: [] });
+        d.list.push(e);
+      });
+
+      let saldo = awal;
+      const body = [];
+      if (!day) body.push([{ content: 'Saldo awal bulan', colSpan: 4 }, rp(saldo)]);
+      days.forEach(d => {
+        if (!day) {
+          const masuk = sumOf(d.list, e => e.masuk), keluar = sumOf(d.list, e => e.keluar);
+          const label = new Date(d.ts).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+          body.push([{
+            content: label + '   |   Masuk ' + rp(masuk) + '   |   Keluar ' + rp(keluar),
+            colSpan: 5,
+            styles: { fillColor: [225, 231, 255], fontStyle: 'bold', textColor: [19, 34, 43] }
+          }]);
+        }
+        d.list.forEach(e => {
+          saldo += e.masuk - e.keluar;
+          body.push([
+            new Date(e.ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':'),
+            e.label,
+            e.masuk ? rp(e.masuk) : '',
+            e.keluar ? rp(-e.keluar) : '',
+            rp(saldo)
+          ]);
+        });
+      });
+
+      doc.autoTable({
+        startY,
+        head: [['Jam', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']],
+        body,
+        foot: [['', day ? 'Total hari' : 'Total bulan', rp(tMasuk), rp(-tKeluar), rp(akhir)]],
+        headStyles: { fillColor: BLUE, textColor: 255 },
+        footStyles: { fillColor: [238, 242, 244], textColor: [19, 34, 43], fontStyle: 'bold' },
+        styles: { fontSize: 10, cellPadding: 5 },
+        columnStyles: { 0: { cellWidth: 44 }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+        margin: { left: M, right: M },
+        didParseCell: d => {
+          if (d.section !== 'body' || typeof d.cell.raw !== 'string' || !d.cell.raw) return;
+          if (d.column.index === 2) d.cell.styles.textColor = [15, 122, 85];
+          if (d.column.index === 3) d.cell.styles.textColor = [194, 59, 34];
+        }
+      });
+    }
+
+    const pages = doc.getNumberOfPages(), H = doc.internal.pageSize.getHeight(), W = doc.internal.pageSize.getWidth();
+    for (let p = 1; p <= pages; p++) {
+      doc.setPage(p); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(140, 150, 156);
+      doc.text('Rincian harian - ' + subtitle, M, H - 24);
+      doc.text('Halaman ' + p + ' dari ' + pages, W - M, H - 24, { align: 'right' });
+    }
+    return doc;
+  }
+
+  function downloadPdf() {
+    if (!(window.jspdf && window.jspdf.jsPDF)) {
+      toast('Pustaka PDF belum termuat. Cek koneksi internet, lalu muat ulang halaman.');
+      return;
+    }
+    try {
+      const built = currentPdf || buildCurrent();
+      built.doc.save(built.name);
+      $('dlgRekap').close();
+      toast(built.label + ' diunduh');
+    } catch (e) {
+      toast('PDF gagal dibuat. Coba lagi.');
+    }
+  }
+  $('rekapUnduh').onclick = downloadPdf;
+
+  // Kelompokkan catatan bertulisan sama (huruf besar/kecil & spasi diabaikan)
+  const normName = n => n.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim() || 'pengeluaran';
+  function groupItems(items) {
+    const g = {};
+    items.forEach(i => {
+      const key = normName(i.name);
+      const x = g[key] || (g[key] = { name: i.name, n: 0, total: 0 });
+      x.n++; x.total += i.amount;
+    });
+    return Object.values(g).sort((a, b) => b.total - a.total);
+  }
+
+  /* ---------- Penyesuaian layar & keyboard HP ---------- */
+  const composerEl = document.querySelector('.composer');
+  const rootEl = document.documentElement;
+  const syncComposerHeight = () => rootEl.style.setProperty('--composer-h', composerEl.offsetHeight + 'px');
+  if ('ResizeObserver' in window) new ResizeObserver(syncComposerHeight).observe(composerEl);
+  window.addEventListener('resize', syncComposerHeight);
+
+  // Saat keyboard muncul, naikkan kolom catat agar tidak tertutup (iOS & Android)
+  const vv = window.visualViewport;
+  function syncKeyboard() {
+    if (!vv) return;
+    let kb = Math.round(window.innerHeight - vv.height - vv.offsetTop);
+    if (kb < 80 || vv.scale > 1.02) kb = 0; // abaikan perubahan kecil & saat pinch-zoom
+    rootEl.style.setProperty('--kb', kb + 'px');
+    composerEl.classList.toggle('kb', kb > 0);
+  }
+  if (vv) { vv.addEventListener('resize', syncKeyboard); vv.addEventListener('scroll', syncKeyboard); }
+  input.addEventListener('focus', () => setTimeout(syncKeyboard, 300));
+  input.addEventListener('blur', () => { rootEl.style.setProperty('--kb', '0px'); composerEl.classList.remove('kb'); });
+
+  /* ---------- Informasi akun ---------- */
+  const accMsg = (t, ok) => { const m = $('accMsg'); m.textContent = t || ''; m.className = 'auth-msg' + (ok ? ' ok' : ''); };
+  function openAkun() {
+    const u = currentUser;
+    if (!u) return;
+    const ids = (u.providerData || []).map(p => p.providerId);
+    const hasPass = ids.includes('password');
+    const created = Date.parse(u.metadata && u.metadata.creationTime);
+    $('accNama').textContent = u.displayName || '-';
+    $('accEmail').textContent = u.email || '-';
+    $('accDibuat').textContent = isNaN(created) ? '-' : new Date(created).toLocaleString('id-ID', {
+      day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }).replace('.', ':');
+    $('accMetode').textContent = [hasPass ? 'Email & kata sandi' : '', ids.includes('google.com') ? 'Google' : ''].filter(Boolean).join(' + ') || '-';
+    $('accPassRow').hidden = !hasPass;
+    $('accPassBox').hidden = !hasPass;
+    $('accGoogle').hidden = hasPass;
+    ['accCur', 'accNew'].forEach(id => { $(id).value = ''; $(id).type = 'password'; });
+    document.querySelectorAll('#dlgAkun [data-toggle]').forEach(b => { b.textContent = 'Lihat'; });
+    accMsg('');
+    $('dlgAkun').showModal();
+  }
+  $('btnAkun').onclick = openAkun;
+  $('accTutup').onclick = () => $('dlgAkun').close();
+
+  // Tombol Lihat / Sembunyikan pada kolom kata sandi
+  document.querySelectorAll('#dlgAkun [data-toggle]').forEach(b => {
+    b.onclick = () => {
+      const el = $(b.dataset.toggle), show = el.type === 'password';
+      el.type = show ? 'text' : 'password';
+      b.textContent = show ? 'Sembunyi' : 'Lihat';
+    };
+  });
+
+  $('accSimpan').onclick = async () => {
+    const cur = $('accCur').value, nw = $('accNew').value;
+    if (!cur || !nw) return accMsg('Isi kata sandi lama dan kata sandi baru.');
+    if (nw.length < 6) return accMsg('Kata sandi baru minimal 6 karakter.');
+    if (cur === nw) return accMsg('Kata sandi baru harus berbeda dari yang lama.');
+    accMsg(''); $('accSimpan').disabled = true;
+    try {
+      await fb.changePassword(cur, nw);
+      $('accCur').value = ''; $('accNew').value = '';
+      accMsg('Kata sandi berhasil diganti.', true);
+    } catch (err) {
+      const wrong = err && ['auth/wrong-password', 'auth/invalid-credential'].includes(err.code);
+      accMsg(wrong ? 'Kata sandi lama salah.'
+        : err && err.code === 'auth/requires-recent-login' ? 'Demi keamanan, keluar lalu masuk lagi, kemudian coba ganti kata sandi.'
+        : errMsg(err));
+    } finally { $('accSimpan').disabled = false; }
+  };
+
+  $('accReset').onclick = async () => {
+    if (!currentUser || !currentUser.email) return;
+    try {
+      await fb.resetPassword(currentUser.email);
+      accMsg('Email atur ulang kata sandi sudah dikirim ke ' + currentUser.email + '. Cek juga folder spam.', true);
+    } catch (err) { accMsg(errMsg(err)); }
+  };
+
+  /* ---------- Kontrol tanggal ---------- */
+  function setDate(k) {
+    if (!k) { render(); return; }
+    const t = todayKey(), m = accountStartKey();
+    selDate = k > t ? t : (k < m ? m : k);
+    render();
+  }
+  $('tglPilih').addEventListener('change', e => setDate(e.target.value));
+  $('tglPrev').onclick = () => setDate(shiftKey(selDate, -1));
+  $('tglNext').onclick = () => setDate(shiftKey(selDate, 1));
+  $('tglHariIni').onclick = () => setDate(todayKey());
+
+  /* ---------- Simpan otomatis 23:59 + pergantian hari ---------- */
+  let lastDay = todayKey(), closedFor = '';
+  function tick() {
+    const now = new Date();
+    const appOpen = currentUser && loaded && !$('app').hidden;
+    // 23:59 → simpan paksa data hari ini
+    if (appOpen && now.getHours() === 23 && now.getMinutes() === 59 && closedFor !== todayKey()) {
+      closedFor = todayKey();
+      flush();
+      toast('Data hari ini tersimpan otomatis');
+    }
+    // lewat tengah malam → mulai hari baru (hari sebelumnya tetap tersimpan)
+    if (todayKey() !== lastDay) {
+      const wasViewingToday = selDate === lastDay;
+      lastDay = todayKey();
+      if (wasViewingToday) selDate = lastDay;
+      if (appOpen) { render(); toast('Hari baru dimulai. Catatan kemarin tetap tersimpan.'); }
+    }
+  }
+  setInterval(tick, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+
+  /* ---------- Login / daftar ---------- */
+  const errText = {
+    'auth/invalid-email': 'Format email tidak valid.',
+    'auth/missing-email': 'Isi email dulu.',
+    'auth/missing-password': 'Isi kata sandi dulu.',
+    'auth/user-not-found': 'Email atau kata sandi salah.',
+    'auth/wrong-password': 'Email atau kata sandi salah.',
+    'auth/invalid-credential': 'Email atau kata sandi salah.',
+    'auth/email-already-in-use': 'Email ini sudah terdaftar. Silakan masuk.',
+    'auth/weak-password': 'Kata sandi minimal 6 karakter.',
+    'auth/too-many-requests': 'Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.',
+    'auth/network-request-failed': 'Tidak ada koneksi internet.',
+    'auth/popup-closed-by-user': '',
+    'auth/cancelled-popup-request': '',
+    'auth/unauthorized-domain': 'Domain ini belum diizinkan. Tambahkan di Firebase: Authentication > Settings > Authorized domains.',
+    'auth/operation-not-allowed': 'Metode login ini belum diaktifkan di Firebase Console.',
+    'auth/invalid-api-key': 'Konfigurasi Firebase belum benar. Cek firebase.js.',
+    'auth/configuration-not-found': 'Konfigurasi Firebase belum benar. Cek firebase.js.'
+  };
+  const errMsg = e => (e && e.code in errText) ? errText[e.code] : 'Terjadi kesalahan. Coba lagi.';
+  const authMsg = (t, ok) => { const m = $('authMsg'); m.textContent = t || ''; m.className = 'auth-msg' + (ok ? ' ok' : ''); };
+  const setBusy = b => ['authSubmit', 'btnGoogle', 'btnLupa'].forEach(id => { $(id).disabled = b; });
+  let authMode = 'masuk';
+
+  function setAuthMode(m) {
+    authMode = m;
+    const daftar = m === 'daftar';
+    $('tabMasuk').setAttribute('aria-selected', String(!daftar));
+    $('tabDaftar').setAttribute('aria-selected', String(daftar));
+    $('fldNama').hidden = !daftar;
+    $('btnLupa').hidden = daftar;
+    $('authSubmit').textContent = daftar ? 'Buat akun' : 'Masuk';
+    $('aPass').autocomplete = daftar ? 'new-password' : 'current-password';
+    authMsg('');
+  }
+  $('tabMasuk').onclick = () => setAuthMode('masuk');
+  $('tabDaftar').onclick = () => setAuthMode('daftar');
+  $('cfgWarn').hidden = fb.isConfigured;
+
+  $('authForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = $('aEmail').value.trim(), pass = $('aPass').value, nama = $('aNama').value.trim();
+    if (!email || !pass) return authMsg('Isi email dan kata sandi.');
+    if (authMode === 'daftar' && pass.length < 6) return authMsg('Kata sandi minimal 6 karakter.');
+    authMsg(''); setBusy(true);
+    try {
+      if (authMode === 'daftar') await fb.register(email, pass, nama);
+      else await fb.login(email, pass);
+    } catch (err) { authMsg(errMsg(err)); }
+    finally { setBusy(false); }
+  });
+
+  $('btnGoogle').onclick = async () => {
+    authMsg(''); setBusy(true);
+    try { await fb.loginGoogle(); }
+    catch (err) { authMsg(errMsg(err)); }
+    finally { setBusy(false); }
+  };
+
+  $('btnLupa').onclick = async () => {
+    const email = $('aEmail').value.trim();
+    if (!email) return authMsg('Isi emailmu dulu, lalu tekan "Lupa kata sandi?".');
+    setBusy(true);
+    try {
+      await fb.resetPassword(email);
+      authMsg('Jika email terdaftar, tautan untuk mengatur ulang kata sandi sudah dikirim. Cek juga folder spam.', true);
+    } catch (err) { authMsg(errMsg(err)); }
+    finally { setBusy(false); }
+  };
+
+  $('btnKeluar').onclick = async () => {
+    if (currentUser && loaded && saveTimer) await flush(); // pastikan perubahan terakhir tersimpan
+    dlg.close(); $('dlgRekap').close(); $('dlgAkun').close();
+    try { await fb.logout(); } catch (e) { toast('Gagal keluar. Coba lagi.'); }
+  };
+
+  /* ---------- Status login → tampilan ---------- */
+  function showScreen(which) {
+    $('loading').hidden = which !== 'loading';
+    $('auth').hidden = which !== 'auth';
+    $('app').hidden = which !== 'app';
+  }
+
+  function enterApp() {
+    clearTimeout(loadTimer);
+    $('userName').innerHTML = '';
+    const who = document.createElement('b');
+    who.textContent = currentUser.displayName || currentUser.email || 'Akun';
+    $('userName').append('Masuk sebagai ', who);
+    setSaveStatus('saved');
+    showScreen('app');
+    render();
+  }
+
+  fb.onAuthChange(user => {
+    if (unsub) { unsub(); unsub = null; }
+    clearTimeout(loadTimer);
+    currentUser = user; loaded = false;
+
+    if (!user) {
+      state = normalize(null);
+      selDate = todayKey();
+      $('authForm').reset();
+      setAuthMode('masuk');
+      showScreen('auth');
+      return;
+    }
+
+    $('loadingMsg').textContent = 'Memuat datamu…';
+    showScreen('loading');
+    loadTimer = setTimeout(() => {
+      if (!loaded) $('loadingMsg').textContent = 'Masih menghubungkan… periksa koneksi internet.';
+    }, 8000);
+
+    unsub = fb.subscribeData(user.uid, async (data, meta) => {
+      if (data === null) {
+        if (meta.fromCache) return; // belum tahu pasti: jangan menimpa data di server
+        // Akun baru: buat dokumen. Jika ada catatan lama di perangkat ini, pindahkan.
+        const legacy = readLegacy();
+        state = normalize(legacy);
+        loaded = true;
+        await flush();
+        if (legacy && (legacy.salary || (legacy.items && legacy.items.length))) {
+          clearLegacy();
+          toast('Catatan lama di perangkat ini sudah dipindahkan ke akunmu');
+        }
+        enterApp();
+      } else if (!meta.hasPendingWrites) {
+        // Data dari server (pertama kali buka, atau diubah dari perangkat lain)
+        state = normalize(data);
+        loaded = true;
+        enterApp();
+      }
+      // hasPendingWrites = gema dari perubahan kita sendiri → abaikan
+    }, err => {
+      $('loadingMsg').textContent = err && err.code === 'permission-denied'
+        ? 'Tidak punya izin membaca data. Cek aturan (Rules) Firestore di Firebase Console.'
+        : 'Gagal memuat data. Periksa koneksi internet, lalu muat ulang halaman.';
+      showScreen('loading');
+    });
+  });
+})();
+</script>
+</body>
+</html>
