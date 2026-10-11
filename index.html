@@ -191,7 +191,7 @@
   .pv-row.bold { font-weight: 800; background: var(--paper); }
   .pv-h { font-weight: 800; font-size: 15px; margin-top: 18px; }
   .pv-note { color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .pv-g { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; padding: 7px 10px; border-top: 1px solid var(--line); }
+  .pv-g { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; padding: 7px 10px; border-top: 1px solid var(--line); }
   .pv-g span:not(:first-child) { text-align: right; white-space: nowrap; }
   .pv-g.head { background: var(--hero); color: #fff; font-weight: 600; }
   .pv-g.foot { background: var(--paper); font-weight: 800; }
@@ -1196,13 +1196,13 @@ import * as fb from './firebase.js';
     let saldo = s.awal;
     const days = [];
     events.forEach(e => {
-      saldo += e.masuk - e.keluar;
       const key = new Date(e.ts).toDateString();
       let d = days.find(x => x.key === key);
-      if (!d) days.push(d = { key, ts: e.ts, masuk: 0, keluar: 0, rows: [] });
+      if (!d) days.push(d = { key, ts: e.ts, masuk: 0, keluar: 0, list: [] });
       d.masuk += e.masuk; d.keluar += e.keluar;
-      d.rows.push({ ...e, saldo });
+      d.list.push(e);
     });
+    days.forEach(d => { d.rows = mergeDayEvents(d.list, saldo); saldo += d.masuk - d.keluar; });
     return { s, days };
   }
 
@@ -1224,10 +1224,10 @@ import * as fb from './firebase.js';
     pv.append(el('div', 'pv-h', 'Pengeluaran per catatan'),
               el('div', 'pv-note', 'Catatan dengan tulisan yang sama dijumlahkan otomatis selama sebulan.'));
     const tbl = el('div', 'pv-box');
-    tbl.append(pvGrid(['Catatan', 'Kali', 'Total', 'Porsi'], 'head'));
+    tbl.append(pvGrid(['Catatan', 'Total', 'Porsi'], 'head'));
     groupItems(s.items).forEach(g =>
-      tbl.append(pvGrid([g.name, g.n + 'x', rp(g.total), Math.round(g.total / s.spentIn * 100) + '%'])));
-    tbl.append(pvGrid(['Total', s.items.length + 'x', rp(s.spentIn), '100%'], 'foot'));
+      tbl.append(pvGrid([withCount(g.name, g.n), rp(g.total), Math.round(g.total / s.spentIn * 100) + '%'])));
+    tbl.append(pvGrid(['Total (' + s.items.length + ' catatan)', rp(s.spentIn), '100%'], 'foot'));
     pv.append(tbl);
   }
 
@@ -1438,13 +1438,13 @@ import * as fb from './firebase.js';
       doc.text('Catatan dengan tulisan yang sama dijumlahkan otomatis selama sebulan.', M, doc.lastAutoTable.finalY + 52);
       doc.autoTable({
         startY: doc.lastAutoTable.finalY + 62,
-        head: [['Catatan', 'Berapa kali', 'Total', 'Porsi']],
-        body: groups.map(g => [g.name, g.n + 'x', rp(g.total), Math.round(g.total / s.spentIn * 100) + '%']),
-        foot: [['Total', s.items.length + 'x', rp(s.spentIn), '100%']],
+        head: [['Catatan', 'Total', 'Porsi']],
+        body: groups.map(g => [withCount(g.name, g.n), rp(g.total), Math.round(g.total / s.spentIn * 100) + '%']),
+        foot: [['Total (' + s.items.length + ' catatan)', rp(s.spentIn), '100%']],
         headStyles: { fillColor: BLUE, textColor: 255 },
         footStyles: { fillColor: [238, 242, 244], textColor: [19, 34, 43], fontStyle: 'bold' },
         styles: { fontSize: 11, cellPadding: 6 },
-        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
         margin: { left: M, right: M }
       });
     }
@@ -1524,6 +1524,7 @@ import * as fb from './firebase.js';
       const body = [];
       if (!day) body.push([{ content: 'Saldo awal bulan', colSpan: 4 }, rp(saldo)]);
       days.forEach(d => {
+        const merged = mergeDayEvents(d.list, saldo);
         if (!day) {
           const masuk = sumOf(d.list, e => e.masuk), keluar = sumOf(d.list, e => e.keluar);
           const label = new Date(d.ts).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -1533,16 +1534,16 @@ import * as fb from './firebase.js';
             styles: { fillColor: [225, 231, 255], fontStyle: 'bold', textColor: [19, 34, 43] }
           }]);
         }
-        d.list.forEach(e => {
-          saldo += e.masuk - e.keluar;
+        merged.forEach(e => {
           body.push([
             new Date(e.ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':'),
             e.label,
             e.masuk ? rp(e.masuk) : '',
             e.keluar ? rp(-e.keluar) : '',
-            rp(saldo)
+            rp(e.saldo)
           ]);
         });
+        saldo = merged.length ? merged[merged.length - 1].saldo : saldo;
       });
 
       doc.autoTable({
@@ -1590,6 +1591,22 @@ import * as fb from './firebase.js';
 
   // Kelompokkan catatan bertulisan sama (huruf besar/kecil & spasi diabaikan)
   const normName = n => n.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim() || 'pengeluaran';
+  const withCount = (name, n) => n > 1 ? name + ' x' + n : name;
+  // Gabungkan pengeluaran bernama sama dalam satu daftar (satu hari): "Jajan x2".
+  // Penambahan gaji tidak digabung. Saldo dihitung berurutan mulai dari saldo awal.
+  function mergeDayEvents(list, startSaldo) {
+    const rows = [], byName = {};
+    list.forEach(e => {
+      if (e.masuk > 0) { rows.push({ ts: e.ts, label: e.label, masuk: e.masuk, keluar: 0, n: 1 }); return; }
+      const key = normName(e.label);
+      const r = byName[key];
+      if (r) { r.keluar += e.keluar; r.n++; }
+      else rows.push(byName[key] = { ts: e.ts, label: e.label, masuk: 0, keluar: e.keluar, n: 1 });
+    });
+    let saldo = startSaldo;
+    rows.forEach(r => { saldo += r.masuk - r.keluar; r.saldo = saldo; r.label = withCount(r.label, r.n); });
+    return rows;
+  }
   function groupItems(items) {
     const g = {};
     items.forEach(i => {
