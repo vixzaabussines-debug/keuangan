@@ -434,13 +434,13 @@
 
       <form id="authForm" novalidate>
         <label class="fld" id="fldNama" hidden>Nama
-          <input id="aNama" type="text" autocomplete="name" placeholder="Nama kamu">
+          <input id="aNama" type="text" autocomplete="name" placeholder="Nama kamu" disabled>
         </label>
         <label class="fld">Email
-          <input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="nama@email.com">
+          <input id="aEmail" type="email" inputmode="email" autocomplete="username" autocapitalize="off" placeholder="nama@email.com" disabled>
         </label>
         <label class="fld">Kata sandi
-          <input id="aPass" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter">
+          <input id="aPass" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter" disabled>
         </label>
         <div class="auth-msg" id="authMsg" role="alert"></div>
         <button class="btn-primary" id="authSubmit" type="submit">Masuk</button>
@@ -502,7 +502,8 @@
 <div class="composer">
   <div class="composer-inner">
     <div class="composer-row">
-      <input id="catatan" type="text" inputmode="text" autocomplete="off" enterkeyhint="done"
+      <input id="catatan" name="catatan-pengeluaran" type="text" inputmode="text" autocomplete="off" enterkeyhint="done"
+             autocorrect="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
              placeholder="rokok 20.000" aria-label="Catatan pengeluaran">
       <button class="btn-add" id="btnCatat">Catat</button>
     </div>
@@ -527,10 +528,10 @@
     <div class="acc-h">Ganti kata sandi</div>
     <div class="acc-note">Kata sandi yang sedang dipakai tidak bisa ditampilkan. Firebase hanya menyimpannya dalam bentuk terenkripsi, bahkan pemilik proyek pun tidak bisa melihatnya. Anda bisa menggantinya di sini.</div>
     <label class="fld">Kata sandi lama
-      <div class="pw"><input id="accCur" type="password" autocomplete="current-password" placeholder="Kata sandi sekarang"><button type="button" data-toggle="accCur">Lihat</button></div>
+      <div class="pw"><input id="accCur" type="password" autocomplete="current-password" placeholder="Kata sandi sekarang" disabled><button type="button" data-toggle="accCur">Lihat</button></div>
     </label>
     <label class="fld">Kata sandi baru
-      <div class="pw"><input id="accNew" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"><button type="button" data-toggle="accNew">Lihat</button></div>
+      <div class="pw"><input id="accNew" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter" disabled><button type="button" data-toggle="accNew">Lihat</button></div>
     </label>
     <div class="auth-msg" id="accMsg" role="alert"></div>
     <button class="btn-primary" id="accSimpan" type="button">Ganti kata sandi</button>
@@ -1375,13 +1376,14 @@ import * as fb from './firebase.js';
     $('accPassRow').hidden = !hasPass;
     $('accPassBox').hidden = !hasPass;
     $('accGoogle').hidden = hasPass;
-    ['accCur', 'accNew'].forEach(id => { $(id).value = ''; $(id).type = 'password'; });
+    ['accCur', 'accNew'].forEach(id => { $(id).disabled = false; $(id).value = ''; $(id).type = 'password'; });
     document.querySelectorAll('#dlgAkun [data-toggle]').forEach(b => { b.textContent = 'Lihat'; });
     accMsg('');
     $('dlgAkun').showModal();
   }
   $('btnAkun').onclick = openAkun;
   $('accTutup').onclick = () => $('dlgAkun').close();
+  $('dlgAkun').addEventListener('close', () => ['accCur', 'accNew'].forEach(id => { $(id).value = ''; $(id).disabled = true; }));
 
   // Tombol Lihat / Sembunyikan pada kolom kata sandi
   document.querySelectorAll('#dlgAkun [data-toggle]').forEach(b => {
@@ -1533,6 +1535,8 @@ import * as fb from './firebase.js';
     $('loading').hidden = which !== 'loading';
     $('auth').hidden = which !== 'auth';
     $('app').hidden = which !== 'app';
+    // Kolom login hanya aktif di layar login
+    ['aNama', 'aEmail', 'aPass'].forEach(id => { $(id).disabled = which !== 'auth'; });
   }
 
   function enterApp() {
