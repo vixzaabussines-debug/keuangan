@@ -358,6 +358,38 @@
   .daysum-grid .in { color: var(--ok); }
   .daysum-grid .out { color: var(--danger); }
 
+  /* ---------- Reset harian ---------- */
+  .btn-reset {
+    width: 100%; margin-top: 12px; font: inherit; font-weight: 600; font-size: 14px;
+    padding: 11px 12px; border-radius: 12px; cursor: pointer;
+    background: transparent; color: var(--danger); border: 1.5px solid rgba(194,59,34,.45);
+    transition: background .15s ease, transform .15s ease;
+  }
+  .btn-reset:hover:not(:disabled) { background: rgba(194,59,34,.07); }
+  .btn-reset:active:not(:disabled) { transform: scale(.98); }
+  .btn-reset:disabled { opacity: .4; cursor: default; }
+  #dlgReset h2 { display: flex; align-items: center; gap: 8px; }
+  #dlgReset .rst-step[hidden] { display: none; }
+  .rst-step { animation: rstIn .25s cubic-bezier(.2, .8, .2, 1) both; }
+  @keyframes rstIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rst-warn {
+    margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+    background: #fdece8; color: #8a2614; font-size: 14px; line-height: 1.5; border: 1.5px solid #f3c2b8;
+  }
+  .rst-warn b { font-weight: 800; }
+  .rst-warn ul { margin: 6px 0 0 18px; padding: 0; }
+  .rst-warn li { margin-top: 3px; }
+  .rst-step .acc-row b.neg, #dlgHapus .acc-row b.neg { color: var(--danger); }
+  .rst-step .acc-row b.pos { color: var(--ok); }
+  .dlg-actions .danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .dlg-actions button:disabled { opacity: .5; cursor: not-allowed; }
+  .rst-count { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; min-height: 18px; }
+  .rst-bar { height: 4px; border-radius: 4px; background: var(--line); margin-top: 8px; overflow: hidden; }
+  .rst-bar i { display: block; height: 100%; width: 100%; background: var(--danger); transform-origin: left; transform: scaleX(0); }
+  .rst-bar i.run { animation: rstBar 5s linear forwards; }
+  @keyframes rstBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @media (prefers-reduced-motion: reduce) { .rst-step { animation: none; } .rst-bar i.run { animation-duration: .01s; } }
+
   /* ---------- Rekap: tanggal & pratinjau PDF ---------- */
   #dlgRekap input[type="date"] {
     width: 100%; margin-top: 14px; font: inherit; font-size: 18px; font-weight: 600;
@@ -635,6 +667,53 @@
   </div>
 </dialog>
 
+<!-- Dialog hapus pengeluaran (tanpa hitung mundur) -->
+<dialog id="dlgHapus">
+  <h2>Hapus pengeluaran?</h2>
+  <p>Apakah Anda yakin ingin menghapus pengeluaran ini?</p>
+  <div class="acc-list">
+    <div class="acc-row"><span>Catatan</span><b id="delNama"></b></div>
+    <div class="acc-row"><span>Jumlah</span><b class="neg" id="delJumlah"></b></div>
+  </div>
+  <div class="dlg-actions">
+    <button id="delBatal" type="button">Batal</button>
+    <button class="danger" id="delOk" type="button">Hapus</button>
+  </div>
+</dialog>
+
+<!-- Dialog reset harian (2 langkah) -->
+<dialog id="dlgReset">
+  <div class="rst-step" id="rstStep1">
+    <h2>Reset hari ini?</h2>
+    <p id="rstDate"></p>
+    <div class="rst-warn">
+      <b>PENTING:</b> Reset akan mengembalikan data hari ini ke keadaan semula, seolah-olah hari ini belum ada catatan.
+      <ul>
+        <li>Semua catatan pengeluaran pada tanggal ini <b>dihapus</b>.</li>
+        <li>Semua penambahan gaji pada tanggal ini <b>dibatalkan</b> dan gaji dikurangi sebesar itu.</li>
+        <li>Perubahan lewat tombol <b>Edit gaji</b> tidak tercatat per hari, jadi tidak ikut dikembalikan.</li>
+      </ul>
+    </div>
+    <div class="acc-list" id="rstSummary"></div>
+    <div class="dlg-actions">
+      <button id="rstBatal1" type="button">Batal</button>
+      <button class="danger" id="rstLanjut" type="button">Lanjutkan</button>
+    </div>
+  </div>
+  <div class="rst-step" id="rstStep2" hidden>
+    <h2>Yakin? Langkah terakhir</h2>
+    <div class="rst-warn">
+      <b>Data yang direset tidak bisa dikembalikan.</b> Setelah ditekan, catatan dan penambahan gaji pada <b id="rstDate2"></b> hilang permanen dari akunmu dan dari semua perangkat.
+    </div>
+    <div class="rst-bar" aria-hidden="true"><i id="rstBar"></i></div>
+    <div class="rst-count" id="rstCount" aria-live="polite"></div>
+    <div class="dlg-actions">
+      <button id="rstBatal2" type="button">Batal</button>
+      <button class="danger" id="rstOk" type="button" disabled>Reset</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- Dialog rekap bulanan -->
 <dialog id="dlgRekap">
   <h2>Pratinjau PDF</h2>
@@ -830,13 +909,20 @@ import * as fb from './firebase.js';
     sum.innerHTML = '<div class="daysum-title"></div><div class="daysum-grid">' +
       '<div><small>Masuk</small><b class="in"></b></div>' +
       '<div><small>Keluar</small><b class="out"></b></div>' +
-      '<div><small>Sisa akhir hari</small><b></b></div></div>';
+      '<div><small>Sisa akhir hari</small><b></b></div></div>' +
+      '<button class="btn-reset" id="btnReset" type="button">Reset hari ini</button>';
     const full = dateFromKey(selDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     sum.querySelector('.daysum-title').textContent = (isToday ? 'Hari ini · ' : '') + full;
     const cells = sum.querySelectorAll('.daysum-grid b');
     cells[0].textContent = rp(ds.masuk);
     cells[1].textContent = rp(-ds.keluar);
     cells[2].textContent = rp(ds.akhir);
+    const rb = sum.querySelector('#btnReset');
+    rb.textContent = isToday ? 'Reset hari ini' : 'Reset tanggal ini';
+    const hasData = ds.items.length > 0 || ds.masuk > 0;
+    rb.disabled = !hasData;
+    if (!hasData) rb.title = 'Tidak ada data pada tanggal ini';
+    rb.onclick = () => openReset(selDate);
     list.appendChild(sum);
 
     if (!ds.items.length) {
@@ -859,7 +945,7 @@ import * as fb from './firebase.js';
       r.querySelector('.n').textContent = it.name;
       r.querySelector('.row-time').textContent = time;
       r.querySelector('.row-amount').textContent = '-' + rp(it.amount);
-      r.querySelector('.row-del').onclick = () => removeItem(it.id);
+      r.querySelector('.row-del').onclick = () => askRemove(it.id);
       rows.appendChild(r);
     });
     list.appendChild(rows);
@@ -917,6 +1003,22 @@ import * as fb from './firebase.js';
   $('btnCatat').onclick = addNotes;
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addNotes(); } });
 
+  // Konfirmasi sebelum menghapus satu pengeluaran (tanpa hitung mundur)
+  const dlgHapus = $('dlgHapus');
+  let delId = '';
+  function askRemove(id) {
+    const it = state.items.find(x => x.id === id);
+    if (!it) return;
+    delId = id;
+    $('delNama').textContent = it.name;
+    $('delJumlah').textContent = '-' + rp(it.amount);
+    dlgHapus.showModal();
+    $('delBatal').focus();
+  }
+  $('delBatal').onclick = () => dlgHapus.close();
+  $('delOk').onclick = () => { const id = delId; dlgHapus.close(); removeItem(id); };
+  dlgHapus.addEventListener('close', () => { delId = ''; });
+
   function removeItem(id) {
     const idx = state.items.findIndex(x => x.id === id);
     if (idx < 0) return;
@@ -924,6 +1026,82 @@ import * as fb from './firebase.js';
     save(); render();
     toast('Catatan dihapus', () => { state.items.push(item); save(); render(); });
   }
+
+  /* ---------- Reset harian (konfirmasi 2 langkah + hitung mundur 5 detik) ---------- */
+  const dlgReset = $('dlgReset');
+  let resetKey = '', resetTick = null;
+
+  const dayRange = k => [dateFromKey(k).getTime(), dateFromKey(shiftKey(k, 1)).getTime()];
+  const fullDate = k => dateFromKey(k).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  function stopResetTimer() { clearInterval(resetTick); resetTick = null; $('rstBar').classList.remove('run'); }
+  function rstStep(n) { $('rstStep1').hidden = n !== 1; $('rstStep2').hidden = n !== 2; }
+
+  function openReset(k) {
+    const [from, to] = dayRange(k);
+    const items = state.items.filter(i => i.ts >= from && i.ts < to);
+    const logs = state.log.filter(l => l.ts >= from && l.ts < to);
+    if (!items.length && !logs.length) return;
+    const keluar = sumOf(items, i => i.amount), masuk = sumOf(logs, l => l.delta);
+    const sisaNow = state.salary - spent();
+    const sisaAfter = (state.salary - masuk) - (spent() - keluar);
+    resetKey = k;
+    $('rstDate').textContent = fullDate(k);
+    $('rstDate2').textContent = fullDate(k);
+    const box = $('rstSummary');
+    box.innerHTML = '';
+    const row = (a, b, cls) => {
+      const r = el('div', 'acc-row'); const bb = el('b', cls || '', b);
+      r.append(el('span', null, a), bb); box.appendChild(r);
+    };
+    row('Catatan dihapus', items.length + ' catatan (' + rp(keluar) + ')', items.length ? 'neg' : '');
+    row('Penambahan gaji dibatalkan', rp(masuk), masuk ? 'neg' : '');
+    row('Sisa sekarang', rp(sisaNow));
+    row('Sisa setelah reset', rp(sisaAfter), 'pos');
+    rstStep(1);
+    stopResetTimer();
+    dlgReset.showModal();
+  }
+
+  function startCountdown() {
+    const ok = $('rstOk'), cnt = $('rstCount'), bar = $('rstBar');
+    stopResetTimer();
+    let left = 5;
+    ok.disabled = true; ok.textContent = 'Reset (' + left + ')';
+    cnt.textContent = 'Tombol reset aktif dalam ' + left + ' detik…';
+    void bar.offsetWidth; bar.classList.add('run');
+    resetTick = setInterval(() => {
+      left--;
+      if (left > 0) {
+        ok.textContent = 'Reset (' + left + ')';
+        cnt.textContent = 'Tombol reset aktif dalam ' + left + ' detik…';
+      } else {
+        stopResetTimer();
+        ok.disabled = false; ok.textContent = 'Ya, reset sekarang';
+        cnt.textContent = 'Tombol reset sekarang aktif.';
+        bar.classList.add('run'); bar.style.transform = 'scaleX(1)'; bar.classList.remove('run');
+      }
+    }, 1000);
+  }
+
+  function doReset() {
+    if (!resetKey || $('rstOk').disabled) return;
+    const [from, to] = dayRange(resetKey);
+    const items = state.items.filter(i => i.ts >= from && i.ts < to);
+    const logs = state.log.filter(l => l.ts >= from && l.ts < to);
+    const masuk = sumOf(logs, l => l.delta);
+    state.items = state.items.filter(i => !(i.ts >= from && i.ts < to));
+    state.log = state.log.filter(l => !(l.ts >= from && l.ts < to));
+    state.salary = Math.max(0, state.salary - masuk);
+    save(); render();
+    dlgReset.close();
+    toast('Data ' + (resetKey === todayKey() ? 'hari ini' : 'tanggal itu') + ' direset (' + items.length + ' catatan, ' + logs.length + ' penambahan gaji)');
+  }
+
+  $('rstLanjut').onclick = () => { rstStep(2); startCountdown(); };
+  $('rstBatal1').onclick = () => dlgReset.close();
+  $('rstBatal2').onclick = () => dlgReset.close();
+  $('rstOk').onclick = doReset;
+  dlgReset.addEventListener('close', () => { stopResetTimer(); $('rstBar').style.transform = ''; resetKey = ''; rstStep(1); });
 
   /* ---------- Edit / tambah gaji ---------- */
   const dlg = $('dlg'), dlgInput = $('dlgInput');
@@ -1651,7 +1829,7 @@ import * as fb from './firebase.js';
 
   $('btnKeluar').onclick = async () => {
     if (currentUser && loaded && saveTimer) await flush(); // pastikan perubahan terakhir tersimpan
-    dlg.close(); $('dlgRekap').close(); $('dlgAkun').close();
+    dlg.close(); $('dlgRekap').close(); $('dlgAkun').close(); dlgReset.close(); dlgHapus.close();
     try { await fb.logout(); } catch (e) { toast('Gagal keluar. Coba lagi.'); }
   };
 
